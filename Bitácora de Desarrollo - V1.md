@@ -1796,6 +1796,49 @@ Siguiente paso recomendado:
 - continuar con mejoras funcionales del onboarding y la CLI
 - evitar más complejidad decorativa salvo que aporte legibilidad real en terminal
 
+### 2026-04-07 | Higiene de repositorio | Endurecimiento de `.gitignore`
+
+Objetivo de la iteración:
+
+- reducir el riesgo de commits accidentales de artefactos locales
+- endurecer la higiene básica del repositorio antes de seguir iterando
+
+Trabajo realizado:
+
+- ampliación de `.gitignore` para cubrir:
+  - caches adicionales de Python
+  - artefactos de cobertura
+  - salidas locales de build
+  - configuraciones comunes de IDE
+  - logs
+  - fichero local `.universal_mcp.secrets.json`
+- actualización de `README.md` para reflejar que el repositorio ya protege mejor secretos locales y artefactos de trabajo
+
+Archivos afectados:
+
+- `.gitignore`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- revisión manual del `.gitignore` resultante
+- comprobación del estado git local antes de preparar commit
+
+Resultado:
+
+- el repositorio queda mejor protegido frente a commits accidentales de secretos locales, cobertura, logs y configuraciones de editor
+- se reduce la necesidad de limpieza manual antes de futuros commits
+
+Bloqueos detectados:
+
+- no hay bloqueos para este ajuste
+
+Siguiente paso recomendado:
+
+- continuar con mejoras funcionales de perfiles, secretos y wrapper
+- mantener el `.gitignore` corto y centrado en artefactos realmente locales
+
 ## Regla de mantenimiento
 
 Cada nueva fase o avance relevante debe añadir una nueva entrada con:

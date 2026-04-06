@@ -55,6 +55,17 @@ Este repositorio contiene una base funcional del proyecto:
 - alta o reutilización de secretos
 - resumen final con estado y siguientes comandos recomendados
 
+## Hygiene
+
+El repositorio ya ignora artefactos locales comunes para evitar commits accidentales de:
+
+- entornos virtuales y caches de Python
+- archivos de cobertura y builds locales
+- configuraciones de IDE
+- logs locales
+- configuración runtime y secretos locales de Universal MCP
+- carpetas temporales `tmp_*`
+
 ## Capacidades internas ya expuestas
 
 - `filesystem`
