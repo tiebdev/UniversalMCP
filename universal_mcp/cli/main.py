@@ -1,0 +1,330 @@
+"""Typer CLI entrypoint."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from rich.console import Console
+import typer
+
+from universal_mcp.cli.onboarding import (
+    bootstrap_settings,
+    build_pending_items,
+    build_preflight_checks,
+    configured_service_names,
+    onboarding_summary,
+    registered_secret_refs,
+    run_guided_onboarding,
+)
+from universal_mcp.cli.views import (
+    build_catalog_table,
+    build_doctor_table,
+    build_onboarding_intro,
+    build_onboarding_summary_panel,
+    build_preflight_table,
+    build_profile_services_table,
+    build_profile_table,
+    build_secrets_table,
+    build_status_table,
+)
+from universal_mcp.config.catalog import load_default_catalog
+from universal_mcp.config.profiles import ServiceConfig
+from universal_mcp.config.secrets import delete_secret, list_secret_records, secret_backend_name, set_secret
+from universal_mcp.config.settings import default_settings_path, ensure_settings, save_settings
+from universal_mcp.cli.wrapper import build_wrapper_env, run_wrapped_command
+from universal_mcp.daemon.process_router import ProcessRouter
+from universal_mcp.daemon.state import DaemonStatus
+from universal_mcp.observability.logging import read_events
+from universal_mcp.runtime.daemon_control import (
+    describe_daemon,
+    last_known_status,
+    start_daemon,
+    stop_daemon,
+)
+
+app = typer.Typer(help="Universal MCP Orchestrator CLI")
+profile_app = typer.Typer(help="Profile management commands")
+service_app = typer.Typer(help="Profile service configuration commands")
+secret_app = typer.Typer(help="Secret management commands")
+app.add_typer(profile_app, name="profile")
+profile_app.add_typer(service_app, name="service")
+app.add_typer(secret_app, name="secret")
+
+console = Console()
+
+
+def _build_status() -> DaemonStatus:
+    settings = ensure_settings(default_settings_path())
+    persisted = last_known_status()
+    if persisted:
+        return persisted
+    router = ProcessRouter(load_default_catalog())
+    return DaemonStatus(
+        port=settings.runtime.port,
+        default_profile=settings.default_profile,
+        processes=router.list_statuses(),
+    )
+
+
+@app.command()
+def start() -> None:
+    settings = ensure_settings(default_settings_path())
+    started, message = start_daemon(settings)
+    console.print(message)
+    if not started and "ya operativo" not in message:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def stop() -> None:
+    settings = ensure_settings(default_settings_path())
+    stopped, message = stop_daemon(settings.runtime.port)
+    console.print(message)
+    if not stopped:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def restart() -> None:
+    settings = ensure_settings(default_settings_path())
+    _, stop_message = stop_daemon(settings.runtime.port)
+    console.print(stop_message)
+    started, start_message = start_daemon(settings)
+    console.print(start_message)
+    if not started:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def status() -> None:
+    settings = ensure_settings(default_settings_path())
+    is_running, message, pid = describe_daemon(settings)
+    daemon_status = _build_status()
+    console.print(message)
+    console.print(f"PID: {pid or '-'}")
+    console.print(f"Puerto: {daemon_status.port}")
+    console.print(f"Perfil por defecto: {daemon_status.default_profile or '-'}")
+    console.print(build_status_table(daemon_status))
+    if not is_running:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def config() -> None:
+    settings = ensure_settings(default_settings_path())
+    console.print(settings.model_dump_json(indent=2))
+
+
+@app.command()
+def catalog() -> None:
+    console.print(build_catalog_table(load_default_catalog()))
+
+
+@app.command()
+def doctor() -> None:
+    settings = ensure_settings(default_settings_path())
+    console.print(build_doctor_table(settings, load_default_catalog()))
+
+
+@secret_app.command("list")
+def list_secrets() -> None:
+    console.print(build_secrets_table(list_secret_records()))
+
+
+@secret_app.command("set")
+def set_secret_command(
+    ref: str,
+    value: str | None = typer.Argument(None),
+) -> None:
+    secret_value = value or typer.prompt("Valor del secreto", hide_input=True, confirmation_prompt=True)
+    record = set_secret(ref, secret_value)
+    console.print(f"Secreto actualizado: {record.ref} ({record.backend})")
+
+
+@secret_app.command("delete")
+def delete_secret_command(ref: str) -> None:
+    removed = delete_secret(ref)
+    if not removed:
+        console.print(f"Secreto no encontrado: {ref}")
+        raise typer.Exit(code=1)
+    console.print(f"Secreto eliminado: {ref}")
+
+
+@app.command()
+def logs(
+    level: str | None = typer.Option(None, help="Filter by event level"),
+    mcp: str | None = typer.Option(None, "--mcp", help="Filter by MCP name"),
+) -> None:
+    events = read_events(level=level, mcp_name=mcp)
+    if not events:
+        console.print("No hay eventos registrados.")
+        return
+
+    for event in events:
+        console.print(
+            f"[{event.timestamp.isoformat()}] {event.level} {event.component}:{event.event} "
+            f"{event.message}"
+        )
+
+
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def run(
+    ctx: typer.Context,
+    command: list[str] = typer.Argument(..., help="External client command"),
+    profile: str | None = typer.Option(None, help="Profile to use"),
+    workspace: Path | None = typer.Option(None, help="Workspace path to inject"),
+    ensure_daemon_running: bool = typer.Option(
+        True,
+        "--ensure-daemon/--no-ensure-daemon",
+        help="Start daemon if needed before launching the client",
+    ),
+) -> None:
+    command = [*command, *ctx.args]
+    if not command:
+        raise typer.BadParameter("Debes indicar un comando externo para ejecutar")
+
+    path = default_settings_path()
+    settings = ensure_settings(path)
+    profile_name = profile or settings.default_profile
+    if profile_name not in settings.profiles:
+        raise typer.BadParameter(f"Perfil desconocido: {profile_name}")
+
+    if ensure_daemon_running:
+        started, message = start_daemon(settings)
+        console.print(message)
+        if not started and "ya operativo" not in message:
+            raise typer.Exit(code=1)
+
+    target_workspace = (workspace or Path.cwd()).resolve()
+    extra_env = build_wrapper_env(
+        settings=settings,
+        profile_name=profile_name,
+        workspace=target_workspace,
+    )
+
+    try:
+        exit_code = run_wrapped_command(command, extra_env)
+    except FileNotFoundError as exc:
+        console.print(f"Comando no encontrado: {exc.filename}")
+        raise typer.Exit(code=127) from exc
+
+    raise typer.Exit(code=exit_code)
+
+
+@profile_app.command("list")
+def list_profiles() -> None:
+    settings = ensure_settings(default_settings_path())
+    for name in settings.profiles:
+        default_marker = " (default)" if name == settings.default_profile else ""
+        console.print(f"- {name}{default_marker}")
+
+
+@profile_app.command("show")
+def show_profile(name: str | None = None) -> None:
+    settings = ensure_settings(default_settings_path())
+    profile_name = name or settings.default_profile
+    if profile_name not in settings.profiles:
+        raise typer.BadParameter(f"Perfil desconocido: {profile_name}")
+    console.print(build_profile_table(settings, profile_name))
+
+
+@service_app.command("show")
+def show_profile_services(name: str | None = None) -> None:
+    settings = ensure_settings(default_settings_path())
+    profile_name = name or settings.default_profile
+    if profile_name not in settings.profiles:
+        raise typer.BadParameter(f"Perfil desconocido: {profile_name}")
+    console.print(build_profile_services_table(settings, profile_name))
+
+
+@service_app.command("set")
+def set_profile_service(
+    profile_name: str,
+    service_name: str,
+    host: str | None = typer.Option(None),
+    port: int | None = typer.Option(None),
+    database: str | None = typer.Option(None),
+    user: str | None = typer.Option(None),
+    secret_ref: str | None = typer.Option(None),
+) -> None:
+    path = default_settings_path()
+    settings = ensure_settings(path)
+    if profile_name not in settings.profiles:
+        raise typer.BadParameter(f"Perfil desconocido: {profile_name}")
+
+    profile = settings.profiles[profile_name]
+    current = profile.services.get(service_name, ServiceConfig())
+    updated = current.model_copy(
+        update={
+            key: value
+            for key, value in {
+                "host": host,
+                "port": port,
+                "database": database,
+                "user": user,
+                "secret_ref": secret_ref,
+            }.items()
+            if value is not None
+        }
+    )
+    profile.services[service_name] = updated
+    save_settings(path, settings)
+    console.print(f"Servicio actualizado: {service_name} en perfil {profile_name}")
+
+
+@service_app.command("remove")
+def remove_profile_service(profile_name: str, service_name: str) -> None:
+    path = default_settings_path()
+    settings = ensure_settings(path)
+    if profile_name not in settings.profiles:
+        raise typer.BadParameter(f"Perfil desconocido: {profile_name}")
+    removed = settings.profiles[profile_name].services.pop(service_name, None)
+    if removed is None:
+        console.print(f"Servicio no encontrado: {service_name}")
+        raise typer.Exit(code=1)
+    save_settings(path, settings)
+    console.print(f"Servicio eliminado: {service_name} del perfil {profile_name}")
+
+
+@profile_app.command("use")
+def use_profile(name: str) -> None:
+    path = default_settings_path()
+    settings = ensure_settings(path)
+    if name not in settings.profiles:
+        raise typer.BadParameter(f"Perfil desconocido: {name}")
+    settings.default_profile = name
+    save_settings(path, settings)
+    console.print(f"Perfil por defecto actualizado: {name}")
+
+
+@app.command()
+def onboarding(force: bool = typer.Option(False, help="Overwrite existing settings")) -> None:
+    path = default_settings_path()
+    intro_settings, created = bootstrap_settings(path, force=force)
+    profile = intro_settings.profiles[intro_settings.default_profile]
+    console.print(f"Initial configuration created at {path}" if created else f"Existing configuration reused from {path}")
+    console.print(
+        build_onboarding_intro(
+            workspace=str(Path.cwd()),
+            settings_path=str(path),
+            default_profile=intro_settings.default_profile,
+            client_target=profile.client,
+        )
+    )
+    console.print(build_preflight_table(build_preflight_checks(intro_settings, root=path.parent)))
+    settings, _ = run_guided_onboarding(path, force=force)
+    console.print(onboarding_summary(settings, path))
+    console.print(
+        build_onboarding_summary_panel(
+            profile_name=settings.default_profile,
+            enabled_mcps=settings.profiles[settings.default_profile].enabled_mcps,
+            configured_services=configured_service_names(settings),
+            secret_refs=registered_secret_refs(root=path.parent),
+            secret_backend=secret_backend_name(),
+            pending_items=build_pending_items(settings, root=path.parent),
+        )
+    )
+
+
+if __name__ == "__main__":
+    app()

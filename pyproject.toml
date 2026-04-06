@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "universal-mcp"
+version = "0.1.0"
+description = "Universal MCP Orchestrator"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "pydantic>=2.10,<3.0",
+  "rich>=13.9,<14.0",
+  "typer>=0.15,<1.0",
+  "uvicorn>=0.34,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9.0",
+  "ruff>=0.11,<1.0",
+]
+
+[project.scripts]
+mcp-cli = "universal_mcp.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["universal_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+

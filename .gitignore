@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+.codex
+.universal_mcp.json
+.universal_mcp_runtime/
+tmp_*/

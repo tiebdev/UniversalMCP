@@ -1,0 +1,38 @@
+from pathlib import Path
+
+from universal_mcp.config.settings import Settings, load_settings, save_settings
+from universal_mcp.runtime.pid import clear_pid, is_process_running, read_pid, write_pid
+from universal_mcp.runtime.state_store import clear_state, read_state, write_state
+from universal_mcp.daemon.state import DaemonStatus
+
+
+def test_settings_roundtrip(tmp_path: Path) -> None:
+    path = tmp_path / "settings.json"
+    settings = Settings(default_profile="personal")
+    save_settings(path, settings)
+    loaded = load_settings(path)
+    assert loaded.default_profile == "personal"
+
+
+def test_pid_roundtrip(tmp_path: Path) -> None:
+    path_root = tmp_path
+    write_pid(12345, root=path_root)
+    assert read_pid(path_root) == 12345
+    clear_pid(path_root)
+    assert read_pid(path_root) is None
+
+
+def test_process_running_for_current_pid() -> None:
+    assert is_process_running(1) or is_process_running(__import__("os").getpid())
+
+
+def test_state_roundtrip(tmp_path: Path) -> None:
+    status = DaemonStatus(port=8765, default_profile="work")
+    write_state(status, root=tmp_path)
+    loaded = read_state(tmp_path)
+    assert loaded is not None
+    assert loaded.port == 8765
+    assert loaded.default_profile == "work"
+    clear_state(tmp_path)
+    assert read_state(tmp_path) is None
+
