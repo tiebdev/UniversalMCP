@@ -1839,6 +1839,65 @@ Siguiente paso recomendado:
 - continuar con mejoras funcionales de perfiles, secretos y wrapper
 - mantener el `.gitignore` corto y centrado en artefactos realmente locales
 
+### 2026-04-07 | CLI de perfiles | Gestión completa básica desde terminal
+
+Objetivo de la iteración:
+
+- cubrir el hueco principal que quedaba tras validar el onboarding
+- permitir gestionar perfiles desde CLI sin editar JSON a mano
+
+Trabajo realizado:
+
+- ampliación de `profile` con nuevos comandos:
+  - `mcp-cli profile create`
+  - `mcp-cli profile clone`
+  - `mcp-cli profile delete`
+  - `mcp-cli profile set-mcps`
+- validación de MCP contra el catálogo V1 antes de persistir cambios
+- protección frente al borrado del perfil por defecto activo
+- mantenimiento del comportamiento existente de:
+  - `profile list`
+  - `profile show`
+  - `profile use`
+- ampliación de tests CLI para cubrir:
+  - creación de perfil con MCP explícitos
+  - clonado profundo de perfil
+  - reasignación de MCP habilitados
+  - rechazo del borrado del perfil por defecto
+
+Archivos afectados:
+
+- `universal_mcp/cli/main.py`
+- `tests/test_cli_wrapper.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- `python3 -m compileall universal_mcp/cli/main.py tests/test_cli_wrapper.py`
+- `python3 -m pytest -q tests/test_cli_wrapper.py` -> `11 passed`
+- `python3 -m pytest -q` -> `55 passed`
+
+Resultado:
+
+- ya se pueden crear, clonar, borrar y reconfigurar perfiles desde CLI
+- el usuario ya no depende de editar `.universal_mcp.json` para la gestión básica de perfiles
+- el bloque de perfiles queda suficientemente cubierto para flujos diarios de trabajo en V1
+
+Bloqueos detectados:
+
+- no hay bloqueos para esta fase
+- queda pendiente solo la edición más fina del perfil si hiciera falta:
+  - `client`
+  - `workspace_policy`
+
+Siguiente paso recomendado:
+
+- volver al cierre del hueco 1:
+  - rotación/actualización asistida de secretos
+  - validación real de `keyring` cuando el entorno lo permita
+- después revisar el flujo final de `mcp-cli run codex`
+
 ## Regla de mantenimiento
 
 Cada nueva fase o avance relevante debe añadir una nueva entrada con:

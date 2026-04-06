@@ -40,10 +40,10 @@ def test_onboarding_creates_settings_file() -> None:
         assert result.exit_code == 0
         assert Path(".universal_mcp.json").exists()
         assert "System: Universal Model Context Protocol (MCP) [1.0.0]" in result.stdout
-        assert "Final Summary" in result.stdout
         assert "Initial configuration created" in result.stdout
-        assert "filesystem:" in result.stdout
-        assert "read-many" in result.stdout
+        assert "Settings Path:" in result.stdout
+        assert "Enabled MCPs" in result.stdout
+        assert "Enable sequential-thinking? [Y/n]" in result.stdout
 
 
 def test_profile_use_persists_default_profile() -> None:
@@ -58,6 +58,52 @@ def test_profile_use_persists_default_profile() -> None:
         assert result.exit_code == 0
         updated = json.loads(settings_path.read_text(encoding="utf-8"))
         assert updated["default_profile"] == "personal"
+
+
+def test_profile_create_clone_set_mcps_and_delete() -> None:
+    with runner.isolated_filesystem():
+        runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
+        settings_path = Path(".universal_mcp.json")
+
+        create_result = runner.invoke(
+            app,
+            [
+                "profile",
+                "create",
+                "lab",
+                "--mcp",
+                "filesystem",
+                "--mcp",
+                "git",
+            ],
+        )
+        clone_result = runner.invoke(app, ["profile", "clone", "lab", "lab-copy"])
+        set_mcps_result = runner.invoke(
+            app,
+            ["profile", "set-mcps", "lab-copy", "filesystem", "sequential-thinking"],
+        )
+        delete_result = runner.invoke(app, ["profile", "delete", "lab"])
+
+        assert create_result.exit_code == 0
+        assert "Perfil creado: lab" in create_result.stdout
+        assert clone_result.exit_code == 0
+        assert "Perfil clonado: lab -> lab-copy" in clone_result.stdout
+        assert set_mcps_result.exit_code == 0
+        assert "MCP actualizados para perfil lab-copy" in set_mcps_result.stdout
+        assert delete_result.exit_code == 0
+        assert "Perfil eliminado: lab" in delete_result.stdout
+
+        payload = json.loads(settings_path.read_text(encoding="utf-8"))
+        assert "lab" not in payload["profiles"]
+        assert payload["profiles"]["lab-copy"]["enabled_mcps"] == ["filesystem", "sequential-thinking"]
+
+
+def test_profile_delete_rejects_default_profile() -> None:
+    with runner.isolated_filesystem():
+        runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
+        result = runner.invoke(app, ["profile", "delete", "work"])
+        assert result.exit_code != 0
+        assert "No puedes eliminar el perfil por defecto en uso" in result.stdout
 
 
 def test_run_injects_environment_without_starting_daemon() -> None:

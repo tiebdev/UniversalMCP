@@ -96,7 +96,7 @@ def build_onboarding_summary_panel(
     secret_backend: str,
     pending_items: list[str],
 ) -> Table:
-    table = Table(title="Final Summary")
+    table = Table()
     table.add_column("Field")
     table.add_column("Value")
     table.add_row("Active Profile", profile_name)

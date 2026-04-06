@@ -37,7 +37,11 @@ Este repositorio contiene una base funcional del proyecto:
 - `mcp-cli secret set <ref> [value]`
 - `mcp-cli secret delete <ref>`
 - `mcp-cli profile list`
+- `mcp-cli profile create <name> [--mcp ...]`
+- `mcp-cli profile clone <source> <target>`
+- `mcp-cli profile delete <name>`
 - `mcp-cli profile show`
+- `mcp-cli profile set-mcps <name> <mcp...>`
 - `mcp-cli profile use <name>`
 - `mcp-cli profile service show`
 - `mcp-cli profile service set <profile> <service> [options]`
@@ -91,6 +95,8 @@ El repositorio ya ignora artefactos locales comunes para evitar commits accident
   - rotación/actualización asistida de secretos
   - validación de keyring real cuando el entorno lo permita
 - después continuar con:
-  - gestión completa de perfiles desde CLI
   - pulido final del flujo `mcp-cli run codex`
   - mejora de UX del onboarding sin añadir complejidad visual innecesaria
+  - edición más fina de perfiles si hace falta:
+    - cliente
+    - workspace policy

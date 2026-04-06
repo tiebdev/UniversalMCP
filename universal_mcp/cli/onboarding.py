@@ -7,51 +7,15 @@ from pathlib import Path
 import typer
 
 from universal_mcp.cli.views import PreflightCheck
-from universal_mcp.config.catalog import CatalogEntry, catalog_names, filter_catalog, load_default_catalog
+from universal_mcp.config.catalog import CatalogEntry, filter_catalog, load_default_catalog
 from universal_mcp.config.profiles import ProfileConfig, ServiceConfig
 from universal_mcp.config.secrets import get_secret, list_secret_records, secret_backend_name, set_secret
 from universal_mcp.config.settings import Settings, save_settings
 from universal_mcp.daemon.server import _preflight_errors_by_name
 
 
-INTERNAL_CAPABILITIES: dict[str, list[str]] = {
-    "filesystem": [
-        "list",
-        "read",
-        "exists",
-        "stat",
-        "glob",
-        "search-text",
-        "read-many",
-    ],
-    "git": [
-        "status",
-        "diff",
-        "changed-files",
-        "branch",
-        "log",
-        "show",
-        "diff-file",
-    ],
-}
-
-
 def onboarding_summary(settings: Settings, path: Path | None = None) -> str:
-    names = ", ".join(catalog_names())
-    location = f" Settings path: {path}." if path else ""
-    enabled = settings.profiles[settings.default_profile].enabled_mcps
-    practical: list[str] = []
-    for name in enabled:
-        capabilities = INTERNAL_CAPABILITIES.get(name)
-        if capabilities:
-            practical.append(f"{name}: {', '.join(capabilities)}")
-    capability_text = f" Practical capabilities: {' | '.join(practical)}." if practical else ""
-    return (
-        f"Available V1 catalog: {names}. "
-        f"Default profile: {settings.default_profile}. "
-        f"Enabled MCPs: {', '.join(enabled)}."
-        f"{capability_text}{location}"
-    )
+    return f"Settings Path: {path}" if path else "Settings Path: -"
 
 
 def bootstrap_settings(path: Path, *, force: bool = False) -> tuple[Settings, bool]:
@@ -157,7 +121,11 @@ def _prompt_enabled_mcps(profile: ProfileConfig) -> list[str]:
     typer.echo("")
     typer.echo("Guided setup: MCP selection")
     for entry in entries:
-        default_enabled = entry.name in enabled_now or (not enabled_now and entry.enabled_by_default)
+        default_enabled = (
+            entry.name in enabled_now
+            or (not enabled_now and entry.enabled_by_default)
+            or (entry.name == "sequential-thinking" and entry.enabled_by_default)
+        )
         if typer.confirm(f"Enable {entry.name}?", default=default_enabled):
             selected.append(entry.name)
     return selected

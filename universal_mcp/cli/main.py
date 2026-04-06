@@ -27,8 +27,8 @@ from universal_mcp.cli.views import (
     build_secrets_table,
     build_status_table,
 )
-from universal_mcp.config.catalog import load_default_catalog
-from universal_mcp.config.profiles import ServiceConfig
+from universal_mcp.config.catalog import catalog_names, load_default_catalog
+from universal_mcp.config.profiles import ProfileConfig, ServiceConfig
 from universal_mcp.config.secrets import delete_secret, list_secret_records, secret_backend_name, set_secret
 from universal_mcp.config.settings import default_settings_path, ensure_settings, save_settings
 from universal_mcp.cli.wrapper import build_wrapper_env, run_wrapped_command
@@ -51,6 +51,21 @@ profile_app.add_typer(service_app, name="service")
 app.add_typer(secret_app, name="secret")
 
 console = Console()
+
+
+def _settings_and_profile(path: Path, profile_name: str):
+    settings = ensure_settings(path)
+    if profile_name not in settings.profiles:
+        raise typer.BadParameter(f"Perfil desconocido: {profile_name}")
+    return settings, settings.profiles[profile_name]
+
+
+def _validate_mcps(mcp_names: list[str]) -> list[str]:
+    known = set(catalog_names())
+    invalid = [name for name in mcp_names if name not in known]
+    if invalid:
+        raise typer.BadParameter(f"MCP desconocido: {', '.join(invalid)}")
+    return mcp_names
 
 
 def _build_status() -> DaemonStatus:
@@ -226,6 +241,58 @@ def show_profile(name: str | None = None) -> None:
     if profile_name not in settings.profiles:
         raise typer.BadParameter(f"Perfil desconocido: {profile_name}")
     console.print(build_profile_table(settings, profile_name))
+
+
+@profile_app.command("create")
+def create_profile(
+    name: str,
+    client: str = typer.Option("codex-cli"),
+    mcp: list[str] = typer.Option(None, "--mcp"),
+) -> None:
+    path = default_settings_path()
+    settings = ensure_settings(path)
+    if name in settings.profiles:
+        raise typer.BadParameter(f"Perfil ya existe: {name}")
+    enabled_mcps = _validate_mcps(mcp)
+    settings.profiles[name] = ProfileConfig(client=client, enabled_mcps=enabled_mcps)
+    save_settings(path, settings)
+    console.print(f"Perfil creado: {name}")
+
+
+@profile_app.command("delete")
+def delete_profile(name: str) -> None:
+    path = default_settings_path()
+    settings = ensure_settings(path)
+    if name not in settings.profiles:
+        raise typer.BadParameter(f"Perfil desconocido: {name}")
+    if name == settings.default_profile:
+        console.print("No puedes eliminar el perfil por defecto en uso")
+        raise typer.Exit(code=1)
+    del settings.profiles[name]
+    save_settings(path, settings)
+    console.print(f"Perfil eliminado: {name}")
+
+
+@profile_app.command("clone")
+def clone_profile(source: str, target: str) -> None:
+    path = default_settings_path()
+    settings = ensure_settings(path)
+    if source not in settings.profiles:
+        raise typer.BadParameter(f"Perfil desconocido: {source}")
+    if target in settings.profiles:
+        raise typer.BadParameter(f"Perfil ya existe: {target}")
+    settings.profiles[target] = settings.profiles[source].model_copy(deep=True)
+    save_settings(path, settings)
+    console.print(f"Perfil clonado: {source} -> {target}")
+
+
+@profile_app.command("set-mcps")
+def set_profile_mcps(profile_name: str, mcps: list[str] = typer.Argument(...)) -> None:
+    path = default_settings_path()
+    settings, profile = _settings_and_profile(path, profile_name)
+    profile.enabled_mcps = _validate_mcps(list(mcps))
+    save_settings(path, settings)
+    console.print(f"MCP actualizados para perfil {profile_name}")
 
 
 @service_app.command("show")
