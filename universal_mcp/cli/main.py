@@ -277,6 +277,7 @@ def run(
         console.print(str(exc))
         raise typer.Exit(code=1) from exc
 
+    console.print(plan.launch_message)
     for warning in plan.warnings:
         console.print(f"WARN: {warning}")
 

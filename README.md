@@ -51,6 +51,15 @@ Este repositorio contiene una base funcional del proyecto:
 - `mcp-cli profile service remove <profile> <service>`
 - `mcp-cli run codex`
 
+## Wrapper y `codex-cli`
+
+El flujo principal de V1 ya está orientado a `codex-cli`:
+
+- `mcp-cli run codex` se trata como camino feliz del wrapper
+- el lanzamiento muestra un mensaje explícito para `Codex CLI`
+- si el perfil espera `codex-cli` pero el ejecutable no encaja, el CLI emite un warning con hint concreto
+- si falta el binario `codex`, el error ya sugiere instalarlo o añadirlo al `PATH`
+
 ## Onboarding actual
 
 `mcp-cli onboarding` ya ofrece:
@@ -123,7 +132,7 @@ El repositorio ya ignora artefactos locales comunes para evitar commits accident
 ## Siguientes pasos recomendados
 
 - continuar con el cierre operativo de V1:
-  - pulido final del flujo `mcp-cli run codex`
   - integración más afinada por cliente si hiciera falta
   - mejora de UX del onboarding sin añadir complejidad visual innecesaria
   - seguir endureciendo validaciones y mensajes del wrapper
+  - revisar si `codex-cli` necesita más convenciones de entorno específicas

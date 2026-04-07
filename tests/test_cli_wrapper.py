@@ -50,6 +50,8 @@ def test_build_launch_plan_warns_when_client_does_not_match_executable(tmp_path:
 
     assert plan.resolved_executable is not None
     assert "does not match executable" in plan.warnings[0]
+    assert "mcp-cli run codex" in plan.warnings[0]
+    assert "Launching Codex CLI via" in plan.launch_message
 
 
 def test_build_launch_plan_warns_on_generic_client(tmp_path: Path) -> None:
@@ -60,6 +62,29 @@ def test_build_launch_plan_warns_on_generic_client(tmp_path: Path) -> None:
     )
 
     assert "generic wrapper path" in plan.warnings[0]
+
+
+def test_build_launch_plan_missing_codex_command_has_specific_hint(tmp_path: Path) -> None:
+    try:
+        build_launch_plan(command=["missing-codex-binary"], target_client="codex-cli", workspace=tmp_path)
+    except ValueError as exc:
+        message = str(exc)
+    else:
+        raise AssertionError("Expected build_launch_plan to fail")
+
+    assert "Comando no encontrado: missing-codex-binary" in message
+    assert "instala `codex`" in message
+
+
+def test_build_launch_plan_accepts_codex_executable_without_warning(tmp_path: Path) -> None:
+    codex_path = tmp_path / "codex"
+    codex_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    codex_path.chmod(0o755)
+
+    plan = build_launch_plan(command=[str(codex_path)], target_client="codex-cli", workspace=tmp_path)
+
+    assert plan.warnings == []
+    assert plan.resolved_executable == str(codex_path)
 
 
 def test_onboarding_creates_settings_file() -> None:
@@ -206,6 +231,7 @@ def test_run_injects_environment_without_starting_daemon() -> None:
         ]
         result = runner.invoke(app, command)
         assert result.exit_code == 0
+        assert "Launching Codex CLI via" in result.stdout
         payload = json.loads(output_path.read_text(encoding="utf-8"))
         assert payload["UNIVERSAL_MCP_DAEMON_URL"] == "http://127.0.0.1:8765"
         assert payload["UNIVERSAL_MCP_PROFILE"] == "work"
@@ -220,6 +246,7 @@ def test_run_warns_when_profile_client_does_not_match_executable() -> None:
         result = runner.invoke(app, ["run", "--no-ensure-daemon", sys.executable, "-c", "print('ok')"])
         assert result.exit_code == 0
         assert "WARN: profile client 'codex-cli' does not match executable" in result.stdout
+        assert "mcp-cli run codex" in result.stdout
 
 
 def test_run_uses_fixed_workspace_policy_when_no_workspace_is_passed() -> None:
@@ -288,6 +315,7 @@ def test_run_rejects_missing_command_before_launch() -> None:
         result = runner.invoke(app, ["run", "--no-ensure-daemon", "missing-cmd-umcp"])
         assert result.exit_code != 0
         assert "Comando no encontrado: missing-cmd-umcp" in result.output
+        assert "mcp-cli run codex" in result.output
 
 
 def test_run_rejects_non_directory_workspace() -> None:

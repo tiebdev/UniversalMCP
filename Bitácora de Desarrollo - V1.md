@@ -2121,6 +2121,61 @@ Siguiente paso recomendado:
 - seguir afinando la integración específica con `codex-cli`
 - revisar si hace falta proyectar más metadatos o convenciones por cliente
 
+### 2026-04-07 | Wrapper | Afinado específico de `codex-cli`
+
+Objetivo de la iteración:
+
+- convertir `codex-cli` en el camino principal y más cuidado del wrapper
+- mejorar la UX del flujo `mcp-cli run codex` con mensajes y hints más concretos
+
+Trabajo realizado:
+
+- ampliación del plan de lanzamiento con:
+  - `display_name`
+  - `launch_message`
+- tratamiento explícito de `codex-cli` como cliente principal en el wrapper
+- mejora de warnings por desajuste entre perfil y ejecutable:
+  - hint concreto a `mcp-cli run codex`
+- mejora del error de comando ausente para `codex-cli`:
+  - sugerencia de instalar `codex`
+  - sugerencia de añadirlo al `PATH`
+- impresión de mensaje de lanzamiento visible antes de ejecutar el subproceso:
+  - `Launching Codex CLI via ...`
+- ampliación de tests para cubrir:
+  - caso feliz con ejecutable `codex`
+  - hint específico en comando ausente
+  - warning mejorado por desajuste
+  - presencia del mensaje de lanzamiento
+
+Archivos afectados:
+
+- `universal_mcp/cli/wrapper.py`
+- `universal_mcp/cli/main.py`
+- `tests/test_cli_wrapper.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- `python3 -m compileall universal_mcp tests`
+- `python3 -m pytest -q tests/test_cli_wrapper.py` -> `24 passed`
+- `python3 -m pytest -q` -> `74 passed`
+
+Resultado:
+
+- `mcp-cli run codex` ya no depende de mensajes genéricos del wrapper
+- el flujo principal para `Codex CLI` queda más claro y más fácil de depurar
+- los errores y warnings del camino principal ya orientan mejor al usuario
+
+Bloqueos detectados:
+
+- no hay bloqueos para esta fase
+
+Siguiente paso recomendado:
+
+- revisar si `codex-cli` necesita variables o convenciones adicionales además de las ya inyectadas
+- después seguir con pulido general de V1 y UX operativa
+
 ## Regla de mantenimiento
 
 Cada nueva fase o avance relevante debe añadir una nueva entrada con:
