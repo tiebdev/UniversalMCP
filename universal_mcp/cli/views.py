@@ -54,7 +54,7 @@ def build_onboarding_intro(
     details = Text(
         "\n".join(
             [
-                "System: Universal Model Context Protocol (MCP) [1.0.0]",
+                "System: Universal Model Context Protocol (MCP) [0.1.0]",
                 "Mode: First-Run Onboarding",
                 f"Workspace: {workspace}",
                 f"Settings Path: {settings_path}",

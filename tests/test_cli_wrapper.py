@@ -92,7 +92,7 @@ def test_onboarding_creates_settings_file() -> None:
         result = runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
         assert result.exit_code == 0
         assert Path(".universal_mcp.json").exists()
-        assert "System: Universal Model Context Protocol (MCP) [1.0.0]" in result.stdout
+        assert "System: Universal Model Context Protocol (MCP) [0.1.0]" in result.stdout
         assert "Initial configuration created" in result.stdout
         assert "Settings Path:" in result.stdout
         assert "Enabled MCPs" in result.stdout
