@@ -2784,6 +2784,7 @@ Resultado:
 - la V1 queda documentada como base funcional cerrada para `Codex CLI`
 - el flujo principal queda validado de punta a punta
 - los problemas de bind, PID stale y confirmación de stop quedan resueltos o suficientemente acotados para entrega
+- queda separada una lista corta de trabajo posterior en `POST_V1.md`
 
 Bloqueos detectados:
 
