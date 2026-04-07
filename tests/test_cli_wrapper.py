@@ -143,6 +143,21 @@ def test_start_with_port_overrides_and_persists_runtime_port(monkeypatch) -> Non
         assert payload["runtime"]["port"] == 8899
 
 
+def test_probe_daemon_command_reports_success(monkeypatch) -> None:
+    with runner.isolated_filesystem():
+        runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
+
+        monkeypatch.setattr(
+            "universal_mcp.cli.main.probe_daemon_app",
+            lambda settings, root=None: (True, "App del daemon validada sin bind real"),
+        )
+
+        result = runner.invoke(app, ["probe-daemon"])
+
+        assert result.exit_code == 0
+        assert "sin bind real" in result.stdout
+
+
 def test_profile_create_clone_set_mcps_and_delete() -> None:
     with runner.isolated_filesystem():
         runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
@@ -406,6 +421,30 @@ def test_catalog_and_doctor_render() -> None:
         assert "filesystem" in catalog_result.stdout
         assert doctor_result.exit_code == 0
         assert "Doctor (work)" in doctor_result.stdout
+
+
+def test_doctor_reports_client_and_daemon_probe(monkeypatch) -> None:
+    with runner.isolated_filesystem():
+        runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
+        monkeypatch.setattr("universal_mcp.cli.main.shutil.which", lambda name: f"/usr/bin/{name}")
+        monkeypatch.setattr(
+            "universal_mcp.cli.main.local_listener_preflight",
+            lambda: (True, "Listeners locales disponibles"),
+        )
+        monkeypatch.setattr(
+            "universal_mcp.cli.main.probe_daemon_app",
+            lambda settings, root=None: (True, "App del daemon validada sin bind real"),
+        )
+
+        result = runner.invoke(app, ["doctor"])
+
+        assert result.exit_code == 0
+        assert "Client Command" in result.stdout
+        assert "/usr/bin/codex" in result.stdout
+        assert "Local Listener Bind" in result.stdout
+        assert "Listeners locales disponibles" in result.stdout
+        assert "Daemon ASGI Probe" in result.stdout
+        assert "sin bind real" in result.stdout
 
 
 def test_profile_show_renders_default_profile() -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 from universal_mcp.runtime.paths import pid_file, runtime_dir
@@ -38,4 +39,28 @@ def is_process_running(pid: int) -> bool:
         return False
     except PermissionError:
         return True
+    if _is_zombie_process(pid):
+        return False
     return True
+
+
+def _is_zombie_process(pid: int) -> bool:
+    if not sys.platform.startswith("linux"):
+        return False
+
+    stat_path = Path(f"/proc/{pid}/stat")
+    try:
+        stat_content = stat_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return False
+
+    closing_paren = stat_content.rfind(")")
+    if closing_paren == -1:
+        return False
+
+    trailing_fields = stat_content[closing_paren + 2 :].split()
+    if not trailing_fields:
+        return False
+    return trailing_fields[0] == "Z"

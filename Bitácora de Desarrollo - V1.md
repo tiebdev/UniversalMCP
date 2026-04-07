@@ -2435,6 +2435,365 @@ Siguiente paso recomendado:
 - validar el daemon en un entorno sin restricción de sockets
 - si hace falta seguir desarrollando dentro de entornos restringidos, estudiar un transporte alternativo o un modo de prueba sin bind real
 
+### 2026-04-07 | Daemon | Probe ASGI sin bind real
+
+Objetivo de la iteración:
+
+- permitir validar la construcción y respuesta básica del daemon dentro de entornos que bloquean sockets locales
+- seguir avanzando sobre V1 sin depender siempre de una prueba HTTP real con bind
+
+Trabajo realizado:
+
+- ampliación de `create_daemon_app` para poder levantar el app sin arrancar procesos externos gestionados
+- incorporación de `probe_daemon_app` en `daemon_control`:
+  - construye el app ASGI del daemon
+  - ejecuta validación local de `/healthz`
+  - ejecuta validación local de `/status`
+  - no abre sockets ni hace bind real
+- nuevo comando CLI:
+  - `mcp-cli probe-daemon`
+- ampliación de tests para cubrir:
+  - probe real del app ASGI sin `start_all`
+  - salida correcta del nuevo comando CLI
+
+Archivos afectados:
+
+- `universal_mcp/daemon/server.py`
+- `universal_mcp/runtime/daemon_control.py`
+- `universal_mcp/cli/main.py`
+- `tests/test_daemon_control.py`
+- `tests/test_cli_wrapper.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- pendientes de ejecutar en esta iteración
+
+Resultado:
+
+- ya existe una verificación útil del daemon dentro de sandboxes o entornos con listeners locales bloqueados
+- el equipo puede separar mejor:
+  - fallo de construcción o lifecycle ASGI
+  - fallo específico de bind o red del entorno
+
+Bloqueos detectados:
+
+- esta prueba no sustituye la validación final con bind real y cliente real
+
+Siguiente paso recomendado:
+
+- ejecutar `pytest` y probar manualmente `mcp-cli probe-daemon`
+- después validar `start` y `run codex` en un entorno sin restricción de sockets
+
+### 2026-04-07 | CLI | Doctor ampliado para readiness de cliente y daemon
+
+Objetivo de la iteración:
+
+- hacer visible desde CLI si el flujo principal con `Codex CLI` está listo antes de intentar un arranque real
+- exponer en `doctor` tanto el estado MCP como la preparación del cliente y del daemon
+
+Trabajo realizado:
+
+- ampliación de `doctor` con checks operativos adicionales:
+  - disponibilidad del comando cliente esperado por el perfil activo
+  - resultado del probe ASGI del daemon sin bind real
+- ampliación de tests de CLI para verificar la nueva salida de `doctor`
+
+Archivos afectados:
+
+- `universal_mcp/cli/main.py`
+- `tests/test_cli_wrapper.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- pendientes de ejecutar en esta iteración
+
+Resultado:
+
+- `doctor` ya no muestra solo el estado de MCPs
+- el usuario puede distinguir mejor entre:
+  - problema de binario cliente ausente
+  - daemon ASGI válido
+  - problema de bind/red propio del entorno
+
+Bloqueos detectados:
+
+- sigue pendiente la validación real con sockets en un entorno no restringido
+
+Siguiente paso recomendado:
+
+- ejecutar la suite y comprobar la salida real de `mcp-cli doctor`
+- después usar `doctor`, `probe-daemon` y `start` como secuencia de diagnóstico base
+
+### 2026-04-07 | Daemon | Diagnóstico explícito de restricción de bind
+
+Objetivo de la iteración:
+
+- corregir el falso positivo en el que la CLI presentaba una restricción del entorno como si fuera solo un puerto ocupado
+- distinguir de forma fiable entre incapacidad de crear listeners locales y conflicto real de puerto
+
+Trabajo realizado:
+
+- incorporación de un preflight de listeners locales en `daemon_control`
+- integración de ese preflight en `start_daemon` para fallar antes con mensaje correcto si el entorno bloquea sockets
+- exposición del nuevo check en `doctor` como:
+  - `Local Listener Bind`
+- ampliación de tests para cubrir:
+  - restricción por `PermissionError`
+  - mensaje de `start_daemon` en entorno bloqueado
+  - render del nuevo check en `doctor`
+
+Archivos afectados:
+
+- `universal_mcp/runtime/daemon_control.py`
+- `universal_mcp/cli/main.py`
+- `tests/test_daemon_control.py`
+- `tests/test_cli_wrapper.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- pendientes de ejecutar en esta iteración
+
+Resultado:
+
+- el producto deja de sugerir un diagnóstico engañoso en sandboxes con sockets bloqueados
+- el equipo puede separar claramente:
+  - bind imposible por política del entorno
+  - puerto realmente ocupado por otro proceso
+
+Bloqueos detectados:
+
+- la validación con bind real sigue dependiendo de un entorno que permita listeners locales
+
+Siguiente paso recomendado:
+
+- ejecutar tests y validar manualmente `doctor` y `start`
+- después repetir la validación final en un entorno sin restricción de sockets
+
+### 2026-04-07 | Tooling | Script de validación runtime end-to-end
+
+Objetivo de la iteración:
+
+- dejar preparada una validación operativa reproducible para ejecutar fuera del sandbox restringido
+- evitar validaciones manuales ambiguas o sesiones interactivas colgadas durante el cierre de V1
+
+Trabajo realizado:
+
+- creación de `scripts/validate_runtime.sh`
+- el script ejecuta la secuencia base de validación:
+  - `mcp-cli doctor`
+  - `mcp-cli probe-daemon`
+  - `mcp-cli start`
+  - `mcp-cli status`
+  - `mcp-cli run --dry-run codex -- --version`
+  - `mcp-cli run codex -- --version`
+- el script guarda logs por paso bajo:
+  - `.universal_mcp_runtime/validation/<timestamp>/`
+- el lanzamiento real de `codex` se hace en modo no interactivo con `--version` para validar wrapper y entorno sin bloquear terminal
+
+Archivos afectados:
+
+- `scripts/validate_runtime.sh`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- pendientes de ejecutar en esta iteración
+
+Resultado:
+
+- el proyecto ya dispone de una rutina única y repetible para validar la ruta crítica de runtime en un entorno normal
+
+Bloqueos detectados:
+
+- la ejecución completa del script sigue dependiendo de un entorno con listeners locales permitidos
+
+Siguiente paso recomendado:
+
+- dar permisos de ejecución al script
+- ejecutarlo en la máquina o terminal objetivo fuera del sandbox restringido
+
+### 2026-04-07 | Runtime | Limpieza de PID stale tras stop real
+
+Objetivo de la iteración:
+
+- corregir el caso detectado en validación real donde el daemon sí terminaba pero `stop` no conseguía confirmarlo
+- evitar que `status` quedara atascado en un PID huérfano después de un cierre válido
+
+Trabajo realizado:
+
+- ajuste de `stop_daemon` para considerar éxito cuando el PID objetivo deja de existir, aunque la comprobación del puerto no acompañe a tiempo
+- limpieza adicional de:
+  - PID file
+  - state file
+- ajuste de `describe_daemon` para autocurar PID stale y devolver estado consistente
+- ampliación de tests para cubrir:
+  - cierre correcto con desaparición del PID
+  - limpieza automática de PID/state huérfanos
+
+Archivos afectados:
+
+- `universal_mcp/runtime/daemon_control.py`
+- `tests/test_daemon_control.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- pendientes de ejecutar en esta iteración
+
+Resultado:
+
+- el runtime deja de confundir una parada correcta con un fallo de confirmación cuando el proceso ya ha muerto
+- `status` se vuelve autorreparable ante PID stale
+
+Bloqueos detectados:
+
+- ninguno nuevo para esta fase
+
+Siguiente paso recomendado:
+
+- ejecutar de nuevo el script de validación runtime en el entorno real
+- confirmar que `stop.log` pasa a cerrar correctamente
+
+### 2026-04-07 | Runtime | Detección de zombies en PID helpers
+
+Objetivo de la iteración:
+
+- corregir el caso restante donde `stop` seguía reportando fallo aunque el proceso ya hubiese terminado y quedara como zombie transitorio
+
+Trabajo realizado:
+
+- ampliación de `is_process_running` en Linux para inspeccionar `/proc/<pid>/stat`
+- tratamiento explícito del estado `Z` como proceso no activo
+- ampliación de tests para cubrir:
+  - zombie tratado como no activo
+  - proceso no zombie tratado como activo
+
+Archivos afectados:
+
+- `universal_mcp/runtime/pid.py`
+- `tests/test_runtime_state.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- pendientes de ejecutar en esta iteración
+
+Resultado:
+
+- el runtime reduce otro falso negativo en confirmación de parada sobre Linux
+
+Bloqueos detectados:
+
+- ninguno nuevo para esta fase
+
+Siguiente paso recomendado:
+
+- volver a ejecutar el script de validación runtime en entorno real
+- revisar si `stop.log` ya cierra con éxito
+
+### 2026-04-07 | Runtime | Escalado de stop a SIGKILL
+
+Objetivo de la iteración:
+
+- cerrar el caso restante donde el daemon no confirma parada dentro de la ventana de `SIGTERM`
+
+Trabajo realizado:
+
+- endurecimiento de `stop_daemon` con dos fases:
+  - espera de salida tras `SIGTERM`
+  - escalado a `SIGKILL` si sigue activo
+- encapsulación de helpers internos para:
+  - espera de salida del PID
+  - limpieza final tras stop confirmado
+- ampliación de tests para cubrir la ruta de escalado a `SIGKILL`
+
+Archivos afectados:
+
+- `universal_mcp/runtime/daemon_control.py`
+- `tests/test_daemon_control.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- pendientes de ejecutar en esta iteración
+
+Resultado:
+
+- el runtime deja de depender exclusivamente de una parada amable para confirmar shutdown
+
+Bloqueos detectados:
+
+- ninguno nuevo para esta fase
+
+Siguiente paso recomendado:
+
+- volver a ejecutar `scripts/validate_runtime.sh` en entorno real
+- comprobar si `stop.log` pasa a `Daemon detenido ...` o `Daemon detenido ... tras SIGKILL`
+
+### 2026-04-08 | Cierre V1 | Documentación final y validación consolidada
+
+Objetivo de la iteración:
+
+- ordenar la documentación final del proyecto para cierre de V1
+- consolidar en un resumen único el estado real del producto tras la validación runtime completa
+
+Trabajo realizado:
+
+- reordenación del `README.md` con foco en:
+  - estado actual
+  - flujo recomendado
+  - validación runtime
+  - cierre de V1
+- creación de `ESTADO_FINAL_V1.md` como resumen ejecutivo del proyecto
+- consolidación de la evidencia operativa ya validada:
+  - `doctor`
+  - `probe-daemon`
+  - `start`
+  - `status`
+  - `run codex`
+  - `stop`
+- actualización de esta bitácora con la fase de cierre
+
+Archivos afectados:
+
+- `README.md`
+- `ESTADO_FINAL_V1.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- lectura de logs de validación runtime real:
+  - `20260407_235811`
+- resultado confirmado:
+  - `Daemon arrancado con PID 49103`
+  - `codex-cli 0.118.0`
+  - `Daemon detenido (PID 49103) tras SIGKILL`
+
+Resultado:
+
+- la V1 queda documentada como base funcional cerrada para `Codex CLI`
+- el flujo principal queda validado de punta a punta
+- los problemas de bind, PID stale y confirmación de stop quedan resueltos o suficientemente acotados para entrega
+
+Bloqueos detectados:
+
+- no hay bloqueos técnicos abiertos para el uso normal de la V1
+
+Siguiente paso recomendado:
+
+- publicar estos cambios
+- considerar futuras iteraciones ya como trabajo post-V1, no como cierre pendiente
+
 ## Regla de mantenimiento
 
 Cada nueva fase o avance relevante debe añadir una nueva entrada con:

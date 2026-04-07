@@ -509,7 +509,13 @@ def build_internal_statuses(internal_catalog) -> dict[str, ManagedProcessStatus]
     }
 
 
-def create_daemon_app(*, default_profile: str, port: int, root: Path) -> FastAPI:
+def create_daemon_app(
+    *,
+    default_profile: str,
+    port: int,
+    root: Path,
+    start_router_processes: bool = True,
+) -> FastAPI:
     settings = load_settings(_settings_path(root))
     profile = settings.profiles.get(default_profile)
     enabled_names = profile.enabled_mcps if profile else []
@@ -739,7 +745,8 @@ def create_daemon_app(*, default_profile: str, port: int, root: Path) -> FastAPI
             event="daemon_started",
             message=f"daemon started on port {port}",
         )
-        await router.start_all()
+        if start_router_processes:
+            await router.start_all()
         await sync_status()
         task = asyncio.create_task(sync_loop())
         yield

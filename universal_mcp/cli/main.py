@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 
 from rich.console import Console
 import typer
@@ -17,6 +18,7 @@ from universal_mcp.cli.onboarding import (
     run_guided_onboarding,
 )
 from universal_mcp.cli.views import (
+    PreflightCheck,
     build_catalog_table,
     build_doctor_table,
     build_onboarding_intro,
@@ -43,6 +45,8 @@ from universal_mcp.observability.logging import read_events
 from universal_mcp.runtime.daemon_control import (
     describe_daemon,
     last_known_status,
+    local_listener_preflight,
+    probe_daemon_app,
     start_daemon,
     stop_daemon,
 )
@@ -115,6 +119,54 @@ def _build_status() -> DaemonStatus:
         default_profile=settings.default_profile,
         processes=router.list_statuses(),
     )
+
+
+def _build_runtime_checks(settings: Settings) -> list[PreflightCheck]:
+    profile = settings.profiles[settings.default_profile]
+    checks: list[PreflightCheck] = []
+
+    client = profile.client
+    expected_command = {
+        "codex-cli": "codex",
+        "claude-code": "claude",
+        "openai": "openai",
+    }.get(client)
+    if expected_command is None:
+        checks.append(
+            PreflightCheck(
+                status="WARN",
+                label="Client Command",
+                detail=f"Cliente no reconocido para checks automaticos: {client}",
+            )
+        )
+    else:
+        resolved = shutil.which(expected_command)
+        checks.append(
+            PreflightCheck(
+                status="OK" if resolved else "FAIL",
+                label="Client Command",
+                detail=resolved or f"No se encontro `{expected_command}` en PATH",
+            )
+        )
+
+    listeners_ok, listeners_message = local_listener_preflight()
+    checks.append(
+        PreflightCheck(
+            status="OK" if listeners_ok else "FAIL",
+            label="Local Listener Bind",
+            detail=listeners_message,
+        )
+    )
+
+    probe_ok, probe_message = probe_daemon_app(settings)
+    checks.append(
+        PreflightCheck(
+            status="OK" if probe_ok else "FAIL",
+            label="Daemon ASGI Probe",
+            detail=probe_message,
+        )
+    )
+    return checks
 
 
 @app.command()
@@ -196,6 +248,16 @@ def catalog() -> None:
 def doctor() -> None:
     settings = ensure_settings(default_settings_path())
     console.print(build_doctor_table(settings, load_default_catalog()))
+    console.print(build_preflight_table(_build_runtime_checks(settings)))
+
+
+@app.command("probe-daemon")
+def probe_daemon() -> None:
+    settings = ensure_settings(default_settings_path())
+    ok, message = probe_daemon_app(settings)
+    console.print(message)
+    if not ok:
+        raise typer.Exit(code=1)
 
 
 @secret_app.command("list")
