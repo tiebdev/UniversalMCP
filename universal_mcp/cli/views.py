@@ -155,6 +155,7 @@ def build_profile_table(settings: Settings, profile_name: str) -> Table:
     table.add_row("Cliente", profile.client)
     table.add_row("MCP habilitados", ", ".join(profile.enabled_mcps) or "-")
     table.add_row("Workspace policy", profile.workspace_policy.mode)
+    table.add_row("Workspace path", profile.workspace_policy.path or "-")
     services = ", ".join(sorted(profile.services.keys())) or "-"
     table.add_row("Servicios", services)
     return table
@@ -190,17 +191,20 @@ def build_doctor_table(settings: Settings, entries: list[CatalogEntry]) -> Table
     return table
 
 
-def build_secrets_table(records: list[SecretRecord]) -> Table:
+def build_secrets_table(records: list[SecretRecord], usage_by_ref: dict[str, list[str]] | None = None) -> Table:
     table = Table(title="Secretos")
     table.add_column("Ref")
     table.add_column("Backend")
     table.add_column("Persistido")
+    table.add_column("Usado por")
 
     for record in records:
+        usage = usage_by_ref.get(record.ref, []) if usage_by_ref else []
         table.add_row(
             record.ref,
             record.backend,
             "si" if record.has_value or record.backend == "keyring" else "no",
+            ", ".join(usage) or "-",
         )
 
     return table

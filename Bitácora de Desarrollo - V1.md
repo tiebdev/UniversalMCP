@@ -1898,6 +1898,229 @@ Siguiente paso recomendado:
   - validación real de `keyring` cuando el entorno lo permita
 - después revisar el flujo final de `mcp-cli run codex`
 
+### 2026-04-07 | CLI de perfiles | Activación real de `workspace_policy`
+
+Objetivo de la iteración:
+
+- cerrar la parte pendiente de edición fina de perfiles
+- hacer que `workspace_policy` deje de ser solo un dato mostrado y pase a afectar al flujo real de `run`
+
+Trabajo realizado:
+
+- ampliación del modelo `WorkspacePolicy` para soportar de forma explícita:
+  - `explicit`
+  - `fixed`
+- validación del modelo para garantizar:
+  - `explicit` sin `path`
+  - `fixed` con `path` obligatorio
+- ampliación de `profile` con nuevos comandos:
+  - `mcp-cli profile set-client <name> <client>`
+  - `mcp-cli profile set-workspace-policy <name> <explicit|fixed> [--path ...]`
+- integración de `workspace_policy` en `mcp-cli run`:
+  - `explicit` usa `--workspace` si se indica
+  - `explicit` usa `cwd` si no se indica workspace
+  - `fixed` usa la ruta persistida del perfil
+  - error claro si el workspace fijo no existe
+- ampliación de la vista de perfil para mostrar también:
+  - `Workspace path`
+- ampliación de tests CLI para cubrir:
+  - cambio de `client`
+  - configuración de `workspace_policy`
+  - validaciones de argumentos inválidos
+  - resolución real del workspace fijo durante `run`
+
+Archivos afectados:
+
+- `universal_mcp/config/profiles.py`
+- `universal_mcp/cli/main.py`
+- `universal_mcp/cli/views.py`
+- `tests/test_cli_wrapper.py`
+- `Readme.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- `python3 -m compileall universal_mcp tests`
+- `python3 -m pytest -q tests/test_cli_wrapper.py` -> `15 passed`
+- `python3 -m pytest -q` -> `59 passed`
+
+Resultado:
+
+- ya se pueden editar desde CLI los dos atributos finos del perfil que faltaban:
+  - `client`
+  - `workspace_policy`
+- `workspace_policy` ya no es decorativo:
+  - condiciona la resolución real del workspace en `mcp-cli run`
+- la V1 gana una política de workspace mínima, clara y usable sin introducir modos ambiguos
+
+Bloqueos detectados:
+
+- no hay bloqueos para esta fase
+- sigue pendiente validar si en una fase posterior compensa añadir más modos además de:
+  - `explicit`
+  - `fixed`
+
+Siguiente paso recomendado:
+
+- volver al cierre del hueco 1:
+  - rotación/actualización asistida de secretos
+  - validación real de `keyring` cuando el entorno lo permita
+- después continuar con:
+  - pulido final del flujo `mcp-cli run codex`
+  - mejoras de ergonomía y validación específicas por cliente
+
+### 2026-04-07 | Hueco 1 | Rotación y actualización asistida de secretos
+
+Objetivo de la iteración:
+
+- cerrar la parte práctica pendiente de la gestión de secretos
+- exponer desde CLI una rotación explícita y hacer más visible dónde se usa cada secreto
+
+Trabajo realizado:
+
+- ampliación de `secret list` para mostrar también:
+  - qué perfil/servicio referencia cada secreto
+- incorporación de un nuevo comando:
+  - `mcp-cli secret rotate <ref> [value]`
+- mejora del flujo de onboarding para secretos existentes:
+  - validación robusta de `reuse/replace/skip`
+  - mensaje claro cuando la configuración se pospone
+  - reintento guiado si la acción introducida es inválida
+- mantenimiento de la persistencia existente:
+  - `set_secret`
+  - fallback local
+  - proyección posterior al daemon
+
+Archivos afectados:
+
+- `universal_mcp/cli/main.py`
+- `universal_mcp/cli/onboarding.py`
+- `universal_mcp/cli/views.py`
+- `tests/test_cli_wrapper.py`
+
+Verificaciones ejecutadas:
+
+- `python3 -m compileall universal_mcp tests`
+- `python3 -m pytest -q tests/test_secrets.py tests/test_cli_wrapper.py` -> `18 passed`
+- `python3 -m pytest -q` -> `61 passed`
+
+Resultado:
+
+- la rotación de secretos ya no depende de reutilizar `set` de forma implícita
+- el usuario puede ver mejor el impacto operativo de cada secreto antes de cambiarlo
+- el onboarding ya cubre con mejor UX la actualización de credenciales existentes
+
+Bloqueos detectados:
+
+- no hay bloqueos para esta fase
+
+Siguiente paso recomendado:
+
+- validar de forma real el backend de `keyring`
+- después continuar con el pulido del wrapper de `mcp-cli run`
+
+### 2026-04-07 | Hueco 1 | Validación real de `keyring`
+
+Objetivo de la iteración:
+
+- dejar de considerar `keyring` disponible solo por poder importarlo
+- hacer que la detección del backend refleje si realmente puede usarse
+
+Trabajo realizado:
+
+- incorporación de un estado explícito de backend de secretos:
+  - `SecretBackendStatus`
+- cambio de criterio para `secret_backend_name`:
+  - `keyring` solo se reporta si el backend es utilizable
+- detección de escenarios degradados:
+  - módulo ausente
+  - backend no resoluble
+  - backend `fail`
+  - backend sin métodos necesarios o con prioridad inválida
+- mantenimiento del fallback local como ruta segura por defecto
+- actualización del preflight del onboarding para mostrar el detalle real del backend
+
+Archivos afectados:
+
+- `universal_mcp/config/secrets.py`
+- `universal_mcp/cli/onboarding.py`
+- `tests/test_secrets.py`
+
+Verificaciones ejecutadas:
+
+- `python3 -m compileall universal_mcp tests`
+- `python3 -m pytest -q tests/test_secrets.py tests/test_cli_wrapper.py` -> `24 passed`
+- `python3 -m pytest -q` -> `67 passed`
+
+Resultado:
+
+- la detección de backend de secretos ya no es superficial
+- el sistema cae a fallback de forma explícita cuando `keyring` no es realmente operativo
+- el preflight informa mejor al usuario sobre el estado de almacenamiento seguro disponible
+
+Bloqueos detectados:
+
+- no hay bloqueos para esta fase
+
+Siguiente paso recomendado:
+
+- revisar el wrapper de `mcp-cli run`
+- endurecer validaciones y mensajes según cliente objetivo
+
+### 2026-04-07 | Wrapper | Endurecimiento del flujo `mcp-cli run`
+
+Objetivo de la iteración:
+
+- reforzar el wrapper de lanzamiento del cliente para que deje de ser un `Popen` mínimo con pocas variables
+- añadir validaciones previas y señales más claras para el usuario
+
+Trabajo realizado:
+
+- incorporación de un plan explícito de lanzamiento:
+  - `WrapperLaunchPlan`
+- validación previa del comando externo:
+  - existencia del ejecutable
+  - resolución de ruta real
+- validación previa del workspace:
+  - existencia
+  - comprobación de directorio
+- ampliación del entorno inyectado al subproceso hijo:
+  - `UNIVERSAL_MCP_TARGET_CLIENT`
+  - `UNIVERSAL_MCP_TRANSLATION_TARGET`
+  - `UNIVERSAL_MCP_CLIENT_EXECUTABLE`
+  - `UNIVERSAL_MCP_CLIENT_EXECUTABLE_PATH`
+- incorporación de warnings útiles cuando:
+  - el `profile.client` no encaja con el ejecutable lanzado
+  - el cliente usa la ruta genérica del wrapper
+- integración de estas validaciones y warnings en `mcp-cli run`
+
+Archivos afectados:
+
+- `universal_mcp/cli/wrapper.py`
+- `universal_mcp/cli/main.py`
+- `tests/test_cli_wrapper.py`
+
+Verificaciones ejecutadas:
+
+- `python3 -m compileall universal_mcp tests`
+- `python3 -m pytest -q tests/test_cli_wrapper.py tests/test_translator.py` -> `25 passed`
+- `python3 -m pytest -q` -> `72 passed`
+
+Resultado:
+
+- `mcp-cli run` falla antes y mejor cuando el comando o el workspace son inválidos
+- el cliente hijo recibe más contexto interno útil para futuras integraciones
+- el wrapper ya ofrece una base más seria para pulido posterior por cliente
+
+Bloqueos detectados:
+
+- no hay bloqueos para esta fase
+
+Siguiente paso recomendado:
+
+- seguir afinando la integración específica con `codex-cli`
+- revisar si hace falta proyectar más metadatos o convenciones por cliente
+
 ## Regla de mantenimiento
 
 Cada nueva fase o avance relevante debe añadir una nueva entrada con:

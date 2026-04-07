@@ -28,10 +28,14 @@ from universal_mcp.cli.views import (
     build_status_table,
 )
 from universal_mcp.config.catalog import catalog_names, load_default_catalog
-from universal_mcp.config.profiles import ProfileConfig, ServiceConfig
+from universal_mcp.config.profiles import ProfileConfig, ServiceConfig, WorkspacePolicy
 from universal_mcp.config.secrets import delete_secret, list_secret_records, secret_backend_name, set_secret
-from universal_mcp.config.settings import default_settings_path, ensure_settings, save_settings
-from universal_mcp.cli.wrapper import build_wrapper_env, run_wrapped_command
+from universal_mcp.config.settings import Settings, default_settings_path, ensure_settings, load_settings, save_settings
+from universal_mcp.cli.wrapper import (
+    WrapperValidationError,
+    build_wrapper_context,
+    run_wrapped_command,
+)
 from universal_mcp.daemon.process_router import ProcessRouter
 from universal_mcp.daemon.state import DaemonStatus
 from universal_mcp.observability.logging import read_events
@@ -66,6 +70,37 @@ def _validate_mcps(mcp_names: list[str]) -> list[str]:
     if invalid:
         raise typer.BadParameter(f"MCP desconocido: {', '.join(invalid)}")
     return mcp_names
+
+
+def _secret_usage_by_ref(settings: Settings) -> dict[str, list[str]]:
+    usage: dict[str, list[str]] = {}
+    for profile_name, profile in settings.profiles.items():
+        for service_name, service in profile.services.items():
+            if not service.secret_ref:
+                continue
+            usage.setdefault(service.secret_ref, []).append(f"{profile_name}.{service_name}")
+    return {ref: sorted(locations) for ref, locations in usage.items()}
+
+
+def _secret_usage_for_ref(ref: str, settings: Settings) -> list[str]:
+    return _secret_usage_by_ref(settings).get(ref, [])
+
+
+def _resolve_run_workspace(profile: ProfileConfig, workspace: Path | None) -> Path:
+    if workspace is not None:
+        return workspace.resolve()
+
+    if profile.workspace_policy.mode == "fixed":
+        if not profile.workspace_policy.path:
+            raise typer.BadParameter(
+                "El perfil usa workspace_policy=fixed pero no tiene una ruta configurada"
+            )
+        fixed_path = Path(profile.workspace_policy.path).expanduser().resolve()
+        if not fixed_path.exists():
+            raise typer.BadParameter(f"El workspace fijo no existe: {fixed_path}")
+        return fixed_path
+
+    return Path.cwd().resolve()
 
 
 def _build_status() -> DaemonStatus:
@@ -143,7 +178,9 @@ def doctor() -> None:
 
 @secret_app.command("list")
 def list_secrets() -> None:
-    console.print(build_secrets_table(list_secret_records()))
+    path = default_settings_path()
+    settings = load_settings(path)
+    console.print(build_secrets_table(list_secret_records(), _secret_usage_by_ref(settings)))
 
 
 @secret_app.command("set")
@@ -154,6 +191,24 @@ def set_secret_command(
     secret_value = value or typer.prompt("Valor del secreto", hide_input=True, confirmation_prompt=True)
     record = set_secret(ref, secret_value)
     console.print(f"Secreto actualizado: {record.ref} ({record.backend})")
+
+
+@secret_app.command("rotate")
+def rotate_secret_command(
+    ref: str,
+    value: str | None = typer.Argument(None),
+) -> None:
+    path = default_settings_path()
+    settings = load_settings(path)
+    usage = _secret_usage_for_ref(ref, settings)
+    if usage:
+        console.print(f"Referencias activas para {ref}: {', '.join(usage)}")
+    else:
+        console.print(f"Sin referencias activas para {ref}. Se creará o actualizará igualmente.")
+
+    secret_value = value or typer.prompt("Nuevo valor del secreto", hide_input=True, confirmation_prompt=True)
+    record = set_secret(ref, secret_value)
+    console.print(f"Secreto rotado: {record.ref} ({record.backend})")
 
 
 @secret_app.command("delete")
@@ -195,14 +250,13 @@ def run(
     ),
 ) -> None:
     command = [*command, *ctx.args]
-    if not command:
-        raise typer.BadParameter("Debes indicar un comando externo para ejecutar")
 
     path = default_settings_path()
     settings = ensure_settings(path)
     profile_name = profile or settings.default_profile
     if profile_name not in settings.profiles:
         raise typer.BadParameter(f"Perfil desconocido: {profile_name}")
+    profile = settings.profiles[profile_name]
 
     if ensure_daemon_running:
         started, message = start_daemon(settings)
@@ -210,12 +264,21 @@ def run(
         if not started and "ya operativo" not in message:
             raise typer.Exit(code=1)
 
-    target_workspace = (workspace or Path.cwd()).resolve()
-    extra_env = build_wrapper_env(
-        settings=settings,
-        profile_name=profile_name,
-        workspace=target_workspace,
-    )
+    target_workspace = _resolve_run_workspace(profile, workspace)
+    try:
+        plan, extra_env = build_wrapper_context(
+            settings=settings,
+            profile_name=profile_name,
+            profile=profile,
+            command=command,
+            workspace=target_workspace,
+        )
+    except WrapperValidationError as exc:
+        console.print(str(exc))
+        raise typer.Exit(code=1) from exc
+
+    for warning in plan.warnings:
+        console.print(f"WARN: {warning}")
 
     try:
         exit_code = run_wrapped_command(command, extra_env)
@@ -293,6 +356,41 @@ def set_profile_mcps(profile_name: str, mcps: list[str] = typer.Argument(...)) -
     profile.enabled_mcps = _validate_mcps(list(mcps))
     save_settings(path, settings)
     console.print(f"MCP actualizados para perfil {profile_name}")
+
+
+@profile_app.command("set-client")
+def set_profile_client(profile_name: str, client: str) -> None:
+    path = default_settings_path()
+    settings, profile = _settings_and_profile(path, profile_name)
+    profile.client = client
+    save_settings(path, settings)
+    console.print(f"Cliente actualizado para perfil {profile_name}: {client}")
+
+
+@profile_app.command("set-workspace-policy")
+def set_profile_workspace_policy(
+    profile_name: str,
+    mode: str,
+    path_value: Path | None = typer.Option(None, "--path"),
+) -> None:
+    path = default_settings_path()
+    settings, profile = _settings_and_profile(path, profile_name)
+    normalized_mode = mode.strip().lower()
+
+    if normalized_mode == "explicit":
+        if path_value is not None:
+            raise typer.BadParameter("No puedes usar --path con workspace_policy=explicit")
+        profile.workspace_policy = WorkspacePolicy(mode="explicit")
+    elif normalized_mode == "fixed":
+        if path_value is None:
+            raise typer.BadParameter("Debes indicar --path cuando workspace_policy=fixed")
+        resolved_path = path_value.expanduser().resolve()
+        profile.workspace_policy = WorkspacePolicy(mode="fixed", path=str(resolved_path))
+    else:
+        raise typer.BadParameter("Workspace policy desconocida. Usa: explicit o fixed")
+
+    save_settings(path, settings)
+    console.print(f"Workspace policy actualizada para perfil {profile_name}: {normalized_mode}")
 
 
 @service_app.command("show")

@@ -9,7 +9,13 @@ import typer
 from universal_mcp.cli.views import PreflightCheck
 from universal_mcp.config.catalog import CatalogEntry, filter_catalog, load_default_catalog
 from universal_mcp.config.profiles import ProfileConfig, ServiceConfig
-from universal_mcp.config.secrets import get_secret, list_secret_records, secret_backend_name, set_secret
+from universal_mcp.config.secrets import (
+    get_secret,
+    list_secret_records,
+    secret_backend_name,
+    secret_backend_status,
+    set_secret,
+)
 from universal_mcp.config.settings import Settings, save_settings
 from universal_mcp.daemon.server import _preflight_errors_by_name
 
@@ -56,12 +62,12 @@ def build_preflight_checks(settings: Settings, *, root: Path) -> list[PreflightC
         )
     )
 
-    backend = secret_backend_name()
+    backend = secret_backend_status()
     checks.append(
         PreflightCheck(
-            status="OK" if backend == "keyring" else "INFO",
+            status="OK" if backend.available else "INFO",
             label="Secret backend detected",
-            detail="keyring available" if backend == "keyring" else "keyring unavailable, using local fallback",
+            detail=backend.detail,
         )
     )
 
@@ -185,20 +191,29 @@ def _handle_secret_prompt(*, secret_ref: str, root: Path, prompt_label: str) -> 
     existing = get_secret(secret_ref, root=root)
     if existing:
         typer.echo(f"Existing secret detected for {secret_ref}.")
-        action = typer.prompt(
-            "Action [reuse/replace/skip]",
-            default="reuse",
-            show_default=True,
-        ).strip().lower()
+        action = _prompt_secret_action()
         if action == "reuse" or action == "":
             return
         if action == "skip":
+            typer.echo(f"Configuration postponed for secret {secret_ref}.")
             return
     else:
         action = "replace"
 
     value = typer.prompt(prompt_label, hide_input=True, confirmation_prompt=True)
     set_secret(secret_ref, value, root=root)
+
+
+def _prompt_secret_action() -> str:
+    while True:
+        action = typer.prompt(
+            "Action [reuse/replace/skip]",
+            default="reuse",
+            show_default=True,
+        ).strip().lower()
+        if action in {"", "reuse", "replace", "skip"}:
+            return action
+        typer.echo("Invalid action. Use: reuse, replace, or skip.")
 
 
 def build_pending_items(settings: Settings, *, root: Path) -> list[str]:

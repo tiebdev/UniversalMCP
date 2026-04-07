@@ -12,7 +12,7 @@ Este repositorio contiene una base funcional del proyecto:
 - catálogo V1 de MCP
 - daemon local con supervisión, observabilidad y wrapper
 - onboarding guiado con flujo visual en terminal
-- gestión de secretos con `keyring` opcional y fallback local
+- gestión de secretos con validación real de `keyring` y fallback local seguro
 - configuración de servicios por perfil desde CLI
 - MCP ya validados:
   - `filesystem`
@@ -35,13 +35,16 @@ Este repositorio contiene una base funcional del proyecto:
 - `mcp-cli logs`
 - `mcp-cli secret list`
 - `mcp-cli secret set <ref> [value]`
+- `mcp-cli secret rotate <ref> [value]`
 - `mcp-cli secret delete <ref>`
 - `mcp-cli profile list`
 - `mcp-cli profile create <name> [--mcp ...]`
 - `mcp-cli profile clone <source> <target>`
 - `mcp-cli profile delete <name>`
 - `mcp-cli profile show`
+- `mcp-cli profile set-client <name> <client>`
 - `mcp-cli profile set-mcps <name> <mcp...>`
+- `mcp-cli profile set-workspace-policy <name> <explicit|fixed> [--path ...]`
 - `mcp-cli profile use <name>`
 - `mcp-cli profile service show`
 - `mcp-cli profile service set <profile> <service> [options]`
@@ -56,8 +59,36 @@ Este repositorio contiene una base funcional del proyecto:
 - checks reales del entorno antes de pedir configuración
 - selección interactiva de MCP habilitados
 - configuración guiada de `github` y `postgres`
-- alta o reutilización de secretos
+- alta, reutilización o reemplazo guiado de secretos
 - resumen final con estado y siguientes comandos recomendados
+
+## Secretos
+
+La gestión de secretos ya permite:
+
+- `set`, `list`, `rotate` y `delete` desde CLI
+- mostrar en `secret list` qué perfil/servicio referencia cada secreto
+- usar `keyring` solo cuando el backend es realmente utilizable
+- caer a fallback local cuando `keyring` no está disponible o no tiene backend operativo
+
+## Perfiles y workspace policy
+
+Los perfiles ya permiten gestionar desde CLI:
+
+- cliente objetivo del perfil
+- MCP habilitados
+- servicios por perfil
+- política de workspace
+
+La `workspace_policy` de V1 soporta dos modos:
+
+- `explicit`
+  - usa `--workspace` si se indica
+  - si no, usa el directorio actual solo para esa ejecución
+- `fixed`
+  - persiste una ruta en el perfil
+  - `mcp-cli run ...` usa esa ruta por defecto
+  - si la ruta no existe, la ejecución falla con error claro
 
 ## Hygiene
 
@@ -91,12 +122,8 @@ El repositorio ya ignora artefactos locales comunes para evitar commits accident
 
 ## Siguientes pasos recomendados
 
-- seguir cerrando el hueco 1 de V1:
-  - rotación/actualización asistida de secretos
-  - validación de keyring real cuando el entorno lo permita
-- después continuar con:
+- continuar con el cierre operativo de V1:
   - pulido final del flujo `mcp-cli run codex`
+  - integración más afinada por cliente si hiciera falta
   - mejora de UX del onboarding sin añadir complejidad visual innecesaria
-  - edición más fina de perfiles si hace falta:
-    - cliente
-    - workspace policy
+  - seguir endureciendo validaciones y mensajes del wrapper
