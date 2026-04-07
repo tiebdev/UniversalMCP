@@ -2241,6 +2241,58 @@ Siguiente paso recomendado:
   - `mcp-cli run codex`
 - decidir después si `codex-cli` necesita alguna convención adicional de entorno
 
+### 2026-04-07 | Daemon | Diagnóstico mejorado de arranque
+
+Objetivo de la iteración:
+
+- mejorar el diagnóstico del arranque del daemon en fallos reales de boot
+- evitar que conflictos de puerto y errores rápidos queden reducidos al mensaje genérico de no respuesta
+
+Trabajo realizado:
+
+- detección temprana de muerte del proceso durante el bucle de arranque
+- lectura del log del daemon para construir mensajes de fallo más útiles
+- tratamiento específico del caso de bind fallido:
+  - puerto ocupado
+- tratamiento de errores genéricos de arranque:
+  - inclusión del último extracto útil de `daemon.log`
+- incorporación de una suite nueva de tests para `daemon_control`
+
+Archivos afectados:
+
+- `universal_mcp/runtime/daemon_control.py`
+- `tests/test_daemon_control.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- `python3 -m compileall universal_mcp tests`
+- `python3 -m pytest -q tests/test_daemon_control.py` -> `2 passed`
+- `python3 -m pytest -q` -> `78 passed`
+- validación manual en workspace temporal:
+  - `mcp-cli start`
+  - resultado observado:
+    - `El daemon no pudo arrancar porque el puerto 8765 ya está en uso. Revisa ...`
+
+Resultado:
+
+- los conflictos de puerto ya se reportan con un mensaje útil y directo desde CLI
+- los fallos rápidos de arranque ya pueden devolver contexto real del log
+- el flujo manual de validación deja mejor identificado el siguiente tipo de ajuste operativo
+
+Bloqueos detectados:
+
+- no hay bloqueos para esta fase
+- sigue siendo razonable estudiar una ergonomía mejor para el puerto runtime en una fase posterior
+
+Siguiente paso recomendado:
+
+- decidir si la V1 necesita:
+  - selección de puerto más cómoda desde CLI o configuración
+  - fallback automático o sugerido cuando el puerto por defecto esté ocupado
+- después continuar con validación manual adicional y cierre de entrega
+
 ## Regla de mantenimiento
 
 Cada nueva fase o avance relevante debe añadir una nueva entrada con:

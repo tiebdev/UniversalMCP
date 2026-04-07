@@ -68,9 +68,19 @@ def start_daemon(settings: Settings, root: Path | None = None) -> tuple[bool, st
     for _ in range(40):
         if daemon_is_responsive(settings.runtime.port):
             return True, f"Daemon arrancado con PID {process.pid}"
+        if process.poll() is not None:
+            return False, _startup_failure_message(
+                port=settings.runtime.port,
+                logfile=logfile,
+                process_exit_code=process.returncode,
+            )
         time.sleep(0.25)
 
-    return False, f"El daemon no respondió tras arrancar. Revisa {logfile}"
+    return False, _startup_failure_message(
+        port=settings.runtime.port,
+        logfile=logfile,
+        process_exit_code=process.poll(),
+    )
 
 
 def stop_daemon(port: int, root: Path | None = None) -> tuple[bool, str]:
@@ -107,3 +117,32 @@ def describe_daemon(settings: Settings, root: Path | None = None) -> tuple[bool,
 
 def last_known_status(root: Path | None = None):
     return read_state(root)
+
+
+def _startup_failure_message(*, port: int, logfile: Path, process_exit_code: int | None) -> str:
+    log_excerpt = _read_log_excerpt(logfile)
+    lowered_excerpt = log_excerpt.lower()
+
+    if "could not bind on any address" in lowered_excerpt or "address already in use" in lowered_excerpt:
+        return (
+            f"El daemon no pudo arrancar porque el puerto {port} ya está en uso. "
+            f"Revisa {logfile}"
+        )
+
+    if log_excerpt:
+        suffix = f" Último error: {log_excerpt}"
+    elif process_exit_code is not None:
+        suffix = f" El proceso terminó con código {process_exit_code}."
+    else:
+        suffix = ""
+
+    return f"El daemon no respondió tras arrancar. Revisa {logfile}.{suffix}"
+
+
+def _read_log_excerpt(logfile: Path, max_lines: int = 3) -> str:
+    if not logfile.exists():
+        return ""
+    lines = [line.strip() for line in logfile.read_text(encoding="utf-8", errors="replace").splitlines() if line.strip()]
+    if not lines:
+        return ""
+    return " | ".join(lines[-max_lines:])

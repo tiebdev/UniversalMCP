@@ -62,6 +62,14 @@ El flujo principal de V1 ya está orientado a `codex-cli`:
 - si el perfil espera `codex-cli` pero el ejecutable no encaja, el CLI emite un warning con hint concreto
 - si falta el binario `codex`, el error ya sugiere instalarlo o añadirlo al `PATH`
 
+## Arranque del daemon
+
+El control del daemon ya diagnostica mejor los fallos de arranque:
+
+- si el puerto configurado está ocupado, `mcp-cli start` lo reporta de forma explícita
+- si el boot falla por otra causa, el CLI incorpora el último extracto útil de `daemon.log`
+- esto reduce el caso genérico de "no respondió tras arrancar" cuando el proceso muere al iniciar
+
 ## Onboarding actual
 
 `mcp-cli onboarding` ya ofrece:
@@ -139,3 +147,4 @@ El repositorio ya ignora artefactos locales comunes para evitar commits accident
   - seguir endureciendo validaciones y mensajes del wrapper
   - revisar si `codex-cli` necesita más convenciones de entorno específicas
   - priorizar validaciones manuales end-to-end del flujo real de uso
+  - valorar ergonomía adicional para puerto runtime configurable
