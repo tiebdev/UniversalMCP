@@ -2176,6 +2176,71 @@ Siguiente paso recomendado:
 - revisar si `codex-cli` necesita variables o convenciones adicionales además de las ya inyectadas
 - después seguir con pulido general de V1 y UX operativa
 
+### 2026-04-07 | Wrapper | Validación previa y `dry-run` para `mcp-cli run`
+
+Objetivo de la iteración:
+
+- cerrar mejor el flujo real de uso de `mcp-cli run codex`
+- permitir validar el contexto exacto de lanzamiento sin arrancar ni el cliente ni el daemon
+
+Trabajo realizado:
+
+- incorporación de `--dry-run` al comando `mcp-cli run`
+- render previo de un resumen operativo:
+  - `Run Context`
+- exposición visible antes del lanzamiento de:
+  - perfil
+  - cliente objetivo
+  - ejecutable
+  - workspace
+  - daemon URL
+  - estado de `ensure_daemon`
+  - estado de `dry_run`
+- comportamiento explícito para `dry-run`:
+  - valida comando y workspace
+  - construye el entorno de wrapper
+  - no arranca el daemon
+  - no lanza el proceso hijo
+  - cierra con mensaje claro de validación completada
+- ampliación de tests para cubrir:
+  - render del contexto
+  - ausencia de lanzamiento real del proceso hijo
+  - ausencia de arranque del daemon en `dry-run`
+
+Archivos afectados:
+
+- `universal_mcp/cli/main.py`
+- `universal_mcp/cli/views.py`
+- `tests/test_cli_wrapper.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- `python3 -m compileall universal_mcp tests`
+- `python3 -m pytest -q tests/test_cli_wrapper.py` -> `26 passed`
+- `python3 -m pytest -q` -> `76 passed`
+
+Resultado:
+
+- el usuario ya puede inspeccionar el contexto real de `mcp-cli run codex` antes de ejecutar nada
+- el flujo principal de uso gana una validación operativa útil para depuración y soporte
+- el wrapper queda más cerca de un cierre real de V1 en términos de experiencia diaria
+
+Bloqueos detectados:
+
+- no hay bloqueos para esta fase
+
+Siguiente paso recomendado:
+
+- validar manualmente el flujo completo:
+  - `mcp-cli onboarding`
+  - `mcp-cli doctor`
+  - `mcp-cli start`
+  - `mcp-cli run --dry-run codex`
+  - `mcp-cli run codex`
+- decidir después si `codex-cli` necesita alguna convención adicional de entorno
+
 ## Regla de mantenimiento
 
 Cada nueva fase o avance relevante debe añadir una nueva entrada con:

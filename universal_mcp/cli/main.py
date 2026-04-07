@@ -20,6 +20,7 @@ from universal_mcp.cli.views import (
     build_catalog_table,
     build_doctor_table,
     build_onboarding_intro,
+    build_run_context_table,
     build_onboarding_summary_panel,
     build_preflight_table,
     build_profile_services_table,
@@ -243,6 +244,11 @@ def run(
     command: list[str] = typer.Argument(..., help="External client command"),
     profile: str | None = typer.Option(None, help="Profile to use"),
     workspace: Path | None = typer.Option(None, help="Workspace path to inject"),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Validate and render the launch context without executing the client",
+    ),
     ensure_daemon_running: bool = typer.Option(
         True,
         "--ensure-daemon/--no-ensure-daemon",
@@ -258,12 +264,6 @@ def run(
         raise typer.BadParameter(f"Perfil desconocido: {profile_name}")
     profile = settings.profiles[profile_name]
 
-    if ensure_daemon_running:
-        started, message = start_daemon(settings)
-        console.print(message)
-        if not started and "ya operativo" not in message:
-            raise typer.Exit(code=1)
-
     target_workspace = _resolve_run_workspace(profile, workspace)
     try:
         plan, extra_env = build_wrapper_context(
@@ -277,9 +277,30 @@ def run(
         console.print(str(exc))
         raise typer.Exit(code=1) from exc
 
+    console.print(
+        build_run_context_table(
+            profile_name=profile_name,
+            target_client=plan.display_name,
+            executable=plan.resolved_executable or plan.executable,
+            workspace=str(target_workspace),
+            daemon_url=extra_env["UNIVERSAL_MCP_DAEMON_URL"],
+            ensure_daemon_running=ensure_daemon_running,
+            dry_run=dry_run,
+        )
+    )
     console.print(plan.launch_message)
     for warning in plan.warnings:
         console.print(f"WARN: {warning}")
+
+    if dry_run:
+        console.print("Dry run complete. No client process launched.")
+        raise typer.Exit(code=0)
+
+    if ensure_daemon_running:
+        started, message = start_daemon(settings)
+        console.print(message)
+        if not started and "ya operativo" not in message:
+            raise typer.Exit(code=1)
 
     try:
         exit_code = run_wrapped_command(command, extra_env)

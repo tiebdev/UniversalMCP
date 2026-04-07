@@ -240,6 +240,31 @@ def test_run_injects_environment_without_starting_daemon() -> None:
         assert payload["UNIVERSAL_MCP_WORKSPACE"] == os.getcwd()
 
 
+def test_run_dry_run_renders_context_without_launching_client() -> None:
+    with runner.isolated_filesystem():
+        runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
+        output_path = Path("should-not-exist.json")
+        command = [
+            "run",
+            "--dry-run",
+            "--no-ensure-daemon",
+            sys.executable,
+            "-c",
+            (
+                "import pathlib;"
+                f"pathlib.Path(r'{output_path.resolve()}').write_text('launched', encoding='utf-8')"
+            ),
+        ]
+
+        result = runner.invoke(app, command)
+
+        assert result.exit_code == 0
+        assert "Run Context" in result.stdout
+        assert "Dry Run" in result.stdout
+        assert "Dry run complete. No client process launched." in result.stdout
+        assert not output_path.exists()
+
+
 def test_run_warns_when_profile_client_does_not_match_executable() -> None:
     with runner.isolated_filesystem():
         runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
@@ -247,6 +272,16 @@ def test_run_warns_when_profile_client_does_not_match_executable() -> None:
         assert result.exit_code == 0
         assert "WARN: profile client 'codex-cli' does not match executable" in result.stdout
         assert "mcp-cli run codex" in result.stdout
+
+
+def test_run_dry_run_does_not_require_daemon_start_message() -> None:
+    with runner.isolated_filesystem():
+        runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
+        result = runner.invoke(app, ["run", "--dry-run", sys.executable, "-c", "print('ok')"])
+
+        assert result.exit_code == 0
+        assert "Dry run complete. No client process launched." in result.stdout
+        assert "Daemon iniciado" not in result.stdout
 
 
 def test_run_uses_fixed_workspace_policy_when_no_workspace_is_passed() -> None:

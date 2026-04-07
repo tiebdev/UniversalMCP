@@ -56,7 +56,9 @@ Este repositorio contiene una base funcional del proyecto:
 El flujo principal de V1 ya está orientado a `codex-cli`:
 
 - `mcp-cli run codex` se trata como camino feliz del wrapper
+- `mcp-cli run --dry-run codex` permite validar el contexto antes de lanzar nada
 - el lanzamiento muestra un mensaje explícito para `Codex CLI`
+- el CLI renderiza un resumen `Run Context` antes de ejecutar
 - si el perfil espera `codex-cli` pero el ejecutable no encaja, el CLI emite un warning con hint concreto
 - si falta el binario `codex`, el error ya sugiere instalarlo o añadirlo al `PATH`
 
@@ -136,3 +138,4 @@ El repositorio ya ignora artefactos locales comunes para evitar commits accident
   - mejora de UX del onboarding sin añadir complejidad visual innecesaria
   - seguir endureciendo validaciones y mensajes del wrapper
   - revisar si `codex-cli` necesita más convenciones de entorno específicas
+  - priorizar validaciones manuales end-to-end del flujo real de uso

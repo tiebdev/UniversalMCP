@@ -127,6 +127,29 @@ def build_status_table(status: DaemonStatus) -> Table:
     return table
 
 
+def build_run_context_table(
+    *,
+    profile_name: str,
+    target_client: str,
+    executable: str,
+    workspace: str,
+    daemon_url: str,
+    ensure_daemon_running: bool,
+    dry_run: bool,
+) -> Table:
+    table = Table(title="Run Context")
+    table.add_column("Field")
+    table.add_column("Value")
+    table.add_row("Profile", profile_name)
+    table.add_row("Target Client", target_client)
+    table.add_row("Executable", executable)
+    table.add_row("Workspace", workspace)
+    table.add_row("Daemon URL", daemon_url)
+    table.add_row("Ensure Daemon", "yes" if ensure_daemon_running else "no")
+    table.add_row("Dry Run", "yes" if dry_run else "no")
+    return table
+
+
 def build_catalog_table(entries: list[CatalogEntry]) -> Table:
     table = Table(title="Catalogo MCP")
     table.add_column("MCP")
