@@ -1,8 +1,0 @@
-# Habilidades Técnicas y Reglas del Stack
-
-- **Lenguaje:** Python 3.10+ ÚNICAMENTE. Es obligatorio el uso de *Type Hints* (tipado estático) en todo el código base.
-- **Motor Core (Concurrencia):** `asyncio` es obligatorio para todas las tareas del Daemon. Prohibido usar llamadas síncronas bloqueantes (como `time.sleep` o peticiones HTTP síncronas). El multiplexor debe exponerse usando *Server-Sent Events (SSE)* o *WebSockets*.
-- **Framework CLI:** Utilizar `Typer` (o `Click`) para el parseo de comandos, `Questionary` para los menús interactivos, y `Rich` para la salida renderizada en terminal (tablas, markdown, colores).
-- **Subprocesamiento (El Wrapper):** Se requiere experiencia avanzada en `subprocess.Popen` y `os.environ` de Python. Es crítico saber cómo envolver y ejecutar de forma segura CLIs de terceros (como `claude-code`, `aider` o `cursor`) inyectándoles variables de entorno temporalmente sin alterar el `~/.bashrc` o equivalente del usuario.
-- **Validación de Datos:** Uso estricto de `Pydantic` (v2) para el parseo de configuraciones, gestión del archivo `.env` (vía `pydantic-settings`) y validación de esquemas de herramientas.
-- **Logging y Depuración:** Utilizar la librería `Loguru`. El Daemon debe escribir sus registros en un archivo rotativo oculto (ej. `~/.universal_mcp/logs/app.log`). NUNCA se debe imprimir información de depuración en `stdout` (salida estándar), ya que esto corrompería las tuberías de comunicación (STDIO) del protocolo MCP y la interfaz del CLI.
