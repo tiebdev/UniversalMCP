@@ -36,12 +36,22 @@ def port_is_in_use(port: int, timeout: float = 0.5) -> bool:
         return False
 
 
+def suggest_free_ports(*, start_port: int, count: int = 3) -> list[int]:
+    suggestions: list[int] = []
+    candidate = start_port + 1
+    while len(suggestions) < count and candidate <= 65535:
+        if not port_is_in_use(candidate):
+            suggestions.append(candidate)
+        candidate += 1
+    return suggestions
+
+
 def start_daemon(settings: Settings, root: Path | None = None) -> tuple[bool, str]:
     pid = read_pid(root)
     if pid and is_process_running(pid) and daemon_is_responsive(settings.runtime.port):
         return False, f"Daemon ya operativo con PID {pid}"
     if port_is_in_use(settings.runtime.port) and not daemon_is_responsive(settings.runtime.port):
-        return False, f"El puerto {settings.runtime.port} ya está ocupado por otro proceso"
+        return False, _port_in_use_message(settings.runtime.port)
 
     directory = runtime_dir(root)
     directory.mkdir(parents=True, exist_ok=True)
@@ -124,10 +134,7 @@ def _startup_failure_message(*, port: int, logfile: Path, process_exit_code: int
     lowered_excerpt = log_excerpt.lower()
 
     if "could not bind on any address" in lowered_excerpt or "address already in use" in lowered_excerpt:
-        return (
-            f"El daemon no pudo arrancar porque el puerto {port} ya está en uso. "
-            f"Revisa {logfile}"
-        )
+        return f"{_port_in_use_message(port)} Revisa {logfile}"
 
     if log_excerpt:
         suffix = f" Último error: {log_excerpt}"
@@ -146,3 +153,14 @@ def _read_log_excerpt(logfile: Path, max_lines: int = 3) -> str:
     if not lines:
         return ""
     return " | ".join(lines[-max_lines:])
+
+
+def _port_in_use_message(port: int) -> str:
+    suggestions = suggest_free_ports(start_port=port)
+    if suggestions:
+        suggested = ", ".join(str(item) for item in suggestions)
+        return (
+            f"El puerto {port} ya está ocupado por otro proceso. "
+            f"Puertos libres sugeridos: {suggested}"
+        )
+    return f"El puerto {port} ya está ocupado por otro proceso."

@@ -118,8 +118,14 @@ def _build_status() -> DaemonStatus:
 
 
 @app.command()
-def start() -> None:
-    settings = ensure_settings(default_settings_path())
+def start(
+    port: int | None = typer.Option(None, help="Override runtime port for this workspace"),
+) -> None:
+    path = default_settings_path()
+    settings = ensure_settings(path)
+    if port is not None:
+        settings.runtime.port = port
+        save_settings(path, settings)
     started, message = start_daemon(settings)
     console.print(message)
     if not started and "ya operativo" not in message:
@@ -136,8 +142,14 @@ def stop() -> None:
 
 
 @app.command()
-def restart() -> None:
-    settings = ensure_settings(default_settings_path())
+def restart(
+    port: int | None = typer.Option(None, help="Override runtime port for this workspace"),
+) -> None:
+    path = default_settings_path()
+    settings = ensure_settings(path)
+    if port is not None:
+        settings.runtime.port = port
+        save_settings(path, settings)
     _, stop_message = stop_daemon(settings.runtime.port)
     console.print(stop_message)
     started, start_message = start_daemon(settings)
@@ -164,6 +176,15 @@ def status() -> None:
 def config() -> None:
     settings = ensure_settings(default_settings_path())
     console.print(settings.model_dump_json(indent=2))
+
+
+@app.command("set-port")
+def set_port(port: int) -> None:
+    path = default_settings_path()
+    settings = ensure_settings(path)
+    settings.runtime.port = port
+    save_settings(path, settings)
+    console.print(f"Puerto runtime actualizado: {port}")
 
 
 @app.command()

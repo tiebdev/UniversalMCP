@@ -28,11 +28,13 @@ def test_start_daemon_reports_port_conflict_from_log(monkeypatch, tmp_path: Path
     monkeypatch.setattr(daemon_control, "port_is_in_use", lambda port, timeout=0.5: False)
     monkeypatch.setattr(daemon_control.subprocess, "Popen", lambda *args, **kwargs: _FakeProcess(poll_values=[1]))
     monkeypatch.setattr(daemon_control.time, "sleep", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(daemon_control, "suggest_free_ports", lambda start_port, count=3: [8766, 8767, 8768])
 
     started, message = daemon_control.start_daemon(settings, root=tmp_path)
 
     assert started is False
-    assert "puerto 8765 ya está en uso" in message
+    assert "puerto 8765 ya está ocupado" in message
+    assert "8766, 8767, 8768" in message
     assert str(logfile) in message
 
 
@@ -54,3 +56,11 @@ def test_start_daemon_reports_last_log_excerpt_on_generic_boot_failure(monkeypat
     assert started is False
     assert "El daemon no respondió tras arrancar" in message
     assert "RuntimeError: boom" in message
+
+
+def test_suggest_free_ports_skips_ports_in_use(monkeypatch) -> None:
+    monkeypatch.setattr(daemon_control, "port_is_in_use", lambda port, timeout=0.5: port in {8766, 8768})
+
+    suggestions = daemon_control.suggest_free_ports(start_port=8765, count=3)
+
+    assert suggestions == [8767, 8769, 8770]

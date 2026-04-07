@@ -113,6 +113,36 @@ def test_profile_use_persists_default_profile() -> None:
         assert updated["default_profile"] == "personal"
 
 
+def test_set_port_persists_runtime_port() -> None:
+    with runner.isolated_filesystem():
+        runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
+        result = runner.invoke(app, ["set-port", "8877"])
+
+        assert result.exit_code == 0
+        assert "Puerto runtime actualizado: 8877" in result.stdout
+
+        payload = json.loads(Path(".universal_mcp.json").read_text(encoding="utf-8"))
+        assert payload["runtime"]["port"] == 8877
+
+
+def test_start_with_port_overrides_and_persists_runtime_port(monkeypatch) -> None:
+    with runner.isolated_filesystem():
+        runner.invoke(app, ["onboarding"], input=_default_onboarding_input())
+
+        def _fake_start_daemon(settings, root=None):
+            return True, f"Daemon arrancado con PID 9999 en puerto {settings.runtime.port}"
+
+        monkeypatch.setattr("universal_mcp.cli.main.start_daemon", _fake_start_daemon)
+
+        result = runner.invoke(app, ["start", "--port", "8899"])
+
+        assert result.exit_code == 0
+        assert "8899" in result.stdout
+
+        payload = json.loads(Path(".universal_mcp.json").read_text(encoding="utf-8"))
+        assert payload["runtime"]["port"] == 8899
+
+
 def test_profile_create_clone_set_mcps_and_delete() -> None:
     with runner.isolated_filesystem():
         runner.invoke(app, ["onboarding"], input=_default_onboarding_input())

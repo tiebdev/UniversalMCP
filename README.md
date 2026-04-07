@@ -26,10 +26,13 @@ Este repositorio contiene una base funcional del proyecto:
 
 - `mcp-cli onboarding`
 - `mcp-cli start`
+- `mcp-cli start --port <port>`
 - `mcp-cli stop`
 - `mcp-cli restart`
+- `mcp-cli restart --port <port>`
 - `mcp-cli status`
 - `mcp-cli config`
+- `mcp-cli set-port <port>`
 - `mcp-cli catalog`
 - `mcp-cli doctor`
 - `mcp-cli logs`
@@ -67,8 +70,16 @@ El flujo principal de V1 ya está orientado a `codex-cli`:
 El control del daemon ya diagnostica mejor los fallos de arranque:
 
 - si el puerto configurado está ocupado, `mcp-cli start` lo reporta de forma explícita
+- el CLI sugiere puertos libres alternativos cuando detecta conflicto
+- el puerto runtime ya puede actualizarse desde CLI con `set-port` o con `start --port`
 - si el boot falla por otra causa, el CLI incorpora el último extracto útil de `daemon.log`
 - esto reduce el caso genérico de "no respondió tras arrancar" cuando el proceso muere al iniciar
+
+Estado actual del arranque real:
+
+- la ergonomía de puerto ya está resuelta en la CLI
+- en este entorno de validación el daemon siguió sin poder bindear incluso usando puertos alternativos altos
+- eso apunta a una restricción del entorno de ejecución o a un problema más profundo del transporte, no ya a una falta de configuración del producto
 
 ## Onboarding actual
 
@@ -147,4 +158,4 @@ El repositorio ya ignora artefactos locales comunes para evitar commits accident
   - seguir endureciendo validaciones y mensajes del wrapper
   - revisar si `codex-cli` necesita más convenciones de entorno específicas
   - priorizar validaciones manuales end-to-end del flujo real de uso
-  - valorar ergonomía adicional para puerto runtime configurable
+  - investigar por qué el daemon no puede bindear en este entorno aunque el puerto cambie

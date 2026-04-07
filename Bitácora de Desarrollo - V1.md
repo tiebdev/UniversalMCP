@@ -2293,6 +2293,70 @@ Siguiente paso recomendado:
   - fallback automático o sugerido cuando el puerto por defecto esté ocupado
 - después continuar con validación manual adicional y cierre de entrega
 
+### 2026-04-07 | Daemon | Puerto configurable y sugerencias automáticas
+
+Objetivo de la iteración:
+
+- resolver de forma operativa el bloqueo por puerto ocupado sin obligar a editar configuración manualmente
+- permitir avanzar desde CLI aunque el puerto por defecto falle
+
+Trabajo realizado:
+
+- incorporación de configuración de puerto desde CLI:
+  - `mcp-cli set-port <port>`
+  - `mcp-cli start --port <port>`
+  - `mcp-cli restart --port <port>`
+- persistencia del puerto runtime en `settings`
+- sugerencia automática de puertos libres cercanos cuando el puerto configurado falla
+- reutilización de esa sugerencia tanto en:
+  - conflicto detectado antes del arranque
+  - fallo de bind detectado desde `daemon.log`
+- ampliación de tests para cubrir:
+  - persistencia de `set-port`
+  - persistencia de `start --port`
+  - selección de puertos libres sugeridos
+
+Archivos afectados:
+
+- `universal_mcp/cli/main.py`
+- `universal_mcp/runtime/daemon_control.py`
+- `tests/test_cli_wrapper.py`
+- `tests/test_daemon_control.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- `python3 -m compileall universal_mcp tests`
+- `python3 -m pytest -q tests/test_daemon_control.py tests/test_cli_wrapper.py` -> `31 passed`
+- `python3 -m pytest -q` -> `81 passed`
+- validación manual en workspace temporal:
+  - `mcp-cli start`
+  - resultado observado:
+    - sugerencias de puertos libres (`8877`, `8878`, `8879`)
+  - `mcp-cli start --port 8877`
+  - `mcp-cli start --port 19087`
+  - persistencia comprobada en `config`
+
+Resultado:
+
+- el usuario ya tiene salida operativa desde CLI cuando el puerto por defecto está ocupado
+- la configuración de puerto deja de ser un cuello de botella documental o manual
+- la validación manual demuestra que el problema restante ya no está en la ergonomía de puerto
+
+Bloqueos detectados:
+
+- el daemon siguió sin poder bindear incluso con puertos alternativos altos en este entorno de validación
+- eso apunta a una limitación o restricción del entorno de ejecución, o a un problema más profundo del arranque de servidor
+
+Siguiente paso recomendado:
+
+- investigar el problema de bind del daemon como incidencia propia:
+  - confirmar si el entorno impide listeners locales
+  - validar si `uvicorn` o la app de servidor fallan por otro motivo subyacente
+  - estudiar si hace falta un transporte alternativo o un modo de arranque diferente
+- después continuar con cierre de entrega V1
+
 ## Regla de mantenimiento
 
 Cada nueva fase o avance relevante debe añadir una nueva entrada con:
