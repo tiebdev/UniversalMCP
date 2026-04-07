@@ -22,6 +22,14 @@ def test_pid_roundtrip(tmp_path: Path) -> None:
     assert read_pid(path_root) is None
 
 
+def test_clear_pid_is_idempotent(tmp_path: Path) -> None:
+    clear_pid(tmp_path)
+    write_pid(12345, root=tmp_path)
+    clear_pid(tmp_path)
+    clear_pid(tmp_path)
+    assert read_pid(tmp_path) is None
+
+
 def test_process_running_for_current_pid() -> None:
     assert is_process_running(1) or is_process_running(__import__("os").getpid())
 
@@ -35,4 +43,3 @@ def test_state_roundtrip(tmp_path: Path) -> None:
     assert loaded.default_profile == "work"
     clear_state(tmp_path)
     assert read_state(tmp_path) is None
-

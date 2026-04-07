@@ -25,8 +25,10 @@ def read_pid(root: Path | None = None) -> int | None:
 
 def clear_pid(root: Path | None = None) -> None:
     path = pid_file(root)
-    if path.exists():
+    try:
         path.unlink()
+    except FileNotFoundError:
+        pass
 
 
 def is_process_running(pid: int) -> bool:

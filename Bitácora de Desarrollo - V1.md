@@ -2357,6 +2357,84 @@ Siguiente paso recomendado:
   - estudiar si hace falta un transporte alternativo o un modo de arranque diferente
 - después continuar con cierre de entrega V1
 
+### 2026-04-07 | Daemon | Plan inmediato de diagnóstico profundo
+
+Objetivo de la iteración:
+
+- convertir el problema restante del daemon en una investigación técnica acotada y ejecutable
+- separar con claridad si el fallo de arranque viene del entorno, del servidor o del lifecycle interno
+
+Plan acordado:
+
+- aislar si el problema es del entorno o del servidor con una prueba mínima de bind
+- probar `universal_mcp.daemon.server` directamente, sin pasar por el wrapper del CLI
+- revisar el lifecycle de PID y shutdown si reaparecen errores de limpieza
+- instrumentar mejor el arranque para distinguir:
+  - fallo de bind
+  - fallo de `uvicorn`
+  - fallo de la app
+
+Resultado esperado del análisis:
+
+- determinar si el entorno impide abrir listeners locales
+- o bien localizar el punto exacto del arranque del daemon que provoca el fallo
+
+Siguiente paso recomendado:
+
+- ejecutar este plan de diagnóstico profundo antes de seguir con más cambios funcionales
+
+### 2026-04-07 | Daemon | Ejecución del diagnóstico profundo
+
+Objetivo de la iteración:
+
+- ejecutar el plan de diagnóstico acordado para distinguir problema de entorno frente a problema del daemon
+
+Trabajo realizado:
+
+- prueba mínima de creación de sockets desde Python en este entorno
+- inspección del lifecycle de `universal_mcp.daemon.server`
+- revisión del manejo de PID en:
+  - `write_pid`
+  - `clear_pid`
+- endurecimiento de la limpieza de PID para que sea idempotente
+
+Hallazgos:
+
+- la prueba mínima de socket falla en este entorno con:
+  - `PermissionError: [Errno 1] Operation not permitted`
+- eso explica por qué el daemon no consigue bindear ni siquiera en puertos altos alternativos
+- el problema principal de arranque observado en esta sesión queda atribuido al entorno de ejecución
+- además apareció un detalle real del proyecto:
+  - `clear_pid` podía fallar por carrera en shutdown
+  - quedó corregido para tolerar `FileNotFoundError`
+
+Archivos afectados:
+
+- `universal_mcp/runtime/pid.py`
+- `tests/test_runtime_state.py`
+- `README.md`
+- `Bitácora de Desarrollo - V1.md`
+
+Verificaciones ejecutadas:
+
+- `python3 -m pytest -q tests/test_runtime_state.py tests/test_daemon_control.py` -> `8 passed`
+- `python3 -m pytest -q` -> `82 passed`
+
+Resultado:
+
+- el problema restante del daemon queda acotado: el entorno actual bloquea listeners locales
+- el bug real de limpieza de PID detectado durante la investigación ya está corregido
+- la investigación permite dejar de perseguir falsos positivos en la capa de CLI o wrapper
+
+Bloqueos detectados:
+
+- este entorno no es válido para validar un daemon HTTP real por bind local
+
+Siguiente paso recomendado:
+
+- validar el daemon en un entorno sin restricción de sockets
+- si hace falta seguir desarrollando dentro de entornos restringidos, estudiar un transporte alternativo o un modo de prueba sin bind real
+
 ## Regla de mantenimiento
 
 Cada nueva fase o avance relevante debe añadir una nueva entrada con:

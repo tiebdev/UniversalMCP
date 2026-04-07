@@ -80,6 +80,8 @@ Estado actual del arranque real:
 - la ergonomía de puerto ya está resuelta en la CLI
 - en este entorno de validación el daemon siguió sin poder bindear incluso usando puertos alternativos altos
 - eso apunta a una restricción del entorno de ejecución o a un problema más profundo del transporte, no ya a una falta de configuración del producto
+- la investigación adicional confirmó que en este sandbox no se pueden crear sockets locales desde Python (`PermissionError: [Errno 1] Operation not permitted`)
+- además se endureció la limpieza del PID para que sea idempotente en shutdown
 
 ## Onboarding actual
 
@@ -159,3 +161,12 @@ El repositorio ya ignora artefactos locales comunes para evitar commits accident
   - revisar si `codex-cli` necesita más convenciones de entorno específicas
   - priorizar validaciones manuales end-to-end del flujo real de uso
   - investigar por qué el daemon no puede bindear en este entorno aunque el puerto cambie
+
+## Plan de análisis del daemon
+
+Para cerrar la incidencia real de arranque del daemon, el plan inmediato es:
+
+1. aislar si el problema es del entorno o del servidor
+2. probar `universal_mcp.daemon.server` directamente, sin pasar por el wrapper del CLI
+3. revisar el lifecycle de PID y shutdown si vuelven a aparecer errores de limpieza
+4. instrumentar mejor el arranque para distinguir fallo de bind, fallo de `uvicorn` y fallo de la app
