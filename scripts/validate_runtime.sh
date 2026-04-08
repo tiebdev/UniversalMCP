@@ -16,7 +16,7 @@ cleanup() {
   if [[ "${STARTED_DAEMON}" -eq 1 ]]; then
     (
       cd "${ROOT_DIR}" &&
-        mcp-cli stop
+        umcp stop
     ) >"$(step_log_path "stop")" 2>&1 || true
   fi
 }
@@ -60,14 +60,14 @@ printf "Universal MCP runtime validation\n"
 printf "Root: %s\n" "${ROOT_DIR}"
 printf "Run dir: %s\n" "${RUN_DIR}"
 
-run_step "doctor" mcp-cli doctor || true
-run_step "probe_daemon" mcp-cli probe-daemon || true
+run_step "doctor" umcp doctor || true
+run_step "probe_daemon" umcp probe-daemon || true
 
-if run_step "start" mcp-cli start; then
+if run_step "start" umcp start; then
   STARTED_DAEMON=1
-  run_step "status" mcp-cli status || true
-  run_step "run_dry_codex_version" mcp-cli run --dry-run codex -- --version || true
-  run_step "run_codex_version" mcp-cli run codex -- --version || true
+  run_step "status" umcp status || true
+  run_step "run_dry_codex_version" umcp run --dry-run codex -- --version || true
+  run_step "run_codex_version" umcp run codex -- --version || true
 else
   printf "\nDaemon start failed. Skipping status and codex runtime launch steps.\n"
 fi

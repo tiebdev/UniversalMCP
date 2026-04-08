@@ -9,21 +9,9 @@ import typer
 from universal_mcp.cli.views import PreflightCheck
 from universal_mcp.config.catalog import CatalogEntry, filter_catalog, load_default_catalog
 from universal_mcp.config.profiles import ProfileConfig, ServiceConfig
-from universal_mcp.config.secrets import (
-    get_secret,
-    list_secret_records,
-    secret_backend_name,
-    secret_backend_status,
-    set_secret,
-)
+from universal_mcp.config.secrets import get_secret, list_secret_records, secret_backend_status, set_secret
 from universal_mcp.config.settings import Settings, save_settings
 from universal_mcp.daemon.server import _preflight_errors_by_name
-
-
-def onboarding_summary(settings: Settings, path: Path | None = None) -> str:
-    return f"Settings Path: {path}" if path else "Settings Path: -"
-
-
 def bootstrap_settings(path: Path, *, force: bool = False) -> tuple[Settings, bool]:
     if path.exists() and not force:
         return Settings.model_validate_json(path.read_text(encoding="utf-8")), False
@@ -44,14 +32,7 @@ def build_preflight_checks(settings: Settings, *, root: Path) -> list[PreflightC
         PreflightCheck(
             status="OK",
             label="Settings schema validated",
-            detail=f"default profile: {settings.default_profile}",
-        )
-    )
-    checks.append(
-        PreflightCheck(
-            status="OK",
-            label="Workspace resolved",
-            detail=str(root),
+            detail="ready",
         )
     )
     checks.append(
@@ -73,19 +54,21 @@ def build_preflight_checks(settings: Settings, *, root: Path) -> list[PreflightC
 
     for entry in enabled_catalog:
         command_ok = shutil.which(entry.command) is not None
-        checks.append(
-            PreflightCheck(
-                status="OK" if command_ok else "WARN",
-                label=f"{entry.name} command",
-                detail=entry.command if command_ok else f"missing command: {entry.command}",
-            )
-        )
         entry_errors = errors_by_name.get(entry.name, [])
+        details: list[str] = []
+        if command_ok:
+            details.append(f"command: {entry.command}")
+        else:
+            details.append(f"missing command: {entry.command}")
+        if entry_errors:
+            details.extend(entry_errors)
+        else:
+            details.append("ready")
         checks.append(
             PreflightCheck(
-                status="OK" if not entry_errors else "WARN",
-                label=f"{entry.name} requirements",
-                detail="ready" if not entry_errors else "; ".join(entry_errors),
+                status="OK" if command_ok and not entry_errors else "WARN",
+                label=f"{entry.name} readiness",
+                detail="; ".join(details),
             )
         )
 

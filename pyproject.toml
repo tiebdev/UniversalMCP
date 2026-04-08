@@ -23,6 +23,7 @@ dev = [
 ]
 
 [project.scripts]
+umcp = "universal_mcp.cli.main:app"
 mcp-cli = "universal_mcp.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
@@ -34,4 +35,3 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-

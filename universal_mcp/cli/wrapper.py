@@ -129,7 +129,7 @@ def _client_mismatch_warning(*, target_client: str, executable: str) -> str:
     if target_client == "codex-cli":
         return (
             f"profile client 'codex-cli' does not match executable '{executable}'. "
-            "Hint: para el flujo principal usa `mcp-cli run codex`."
+            "Hint: para el flujo principal usa `umcp run codex`."
         )
     return f"profile client '{target_client}' does not match executable '{executable}'"
 
@@ -139,7 +139,7 @@ def _missing_command_message(*, target_client: str, executable: str | None) -> s
         command_name = executable or "codex"
         return (
             f"Comando no encontrado: {command_name}. "
-            "Para Codex CLI instala `codex` o añádelo al PATH, y usa `mcp-cli run codex`."
+            "Para Codex CLI instala `codex` o añádelo al PATH, y usa `umcp run codex`."
         )
     if executable is None:
         return "Debes indicar un comando externo para ejecutar"

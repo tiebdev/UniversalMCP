@@ -50,7 +50,7 @@ def test_build_launch_plan_warns_when_client_does_not_match_executable(tmp_path:
 
     assert plan.resolved_executable is not None
     assert "does not match executable" in plan.warnings[0]
-    assert "mcp-cli run codex" in plan.warnings[0]
+    assert "umcp run codex" in plan.warnings[0]
     assert "Launching Codex CLI via" in plan.launch_message
 
 
@@ -93,8 +93,10 @@ def test_onboarding_creates_settings_file() -> None:
         assert result.exit_code == 0
         assert Path(".universal_mcp.json").exists()
         assert "System: Universal Model Context Protocol (MCP) [0.1.0]" in result.stdout
-        assert "Initial configuration created" in result.stdout
+        assert "Configuration: created" in result.stdout
         assert "Settings Path:" in result.stdout
+        assert "Environment Checks" in result.stdout
+        assert "Client Target" in result.stdout
         assert "Enabled MCPs" in result.stdout
         assert "Enable sequential-thinking? [Y/n]" in result.stdout
 
@@ -316,7 +318,7 @@ def test_run_warns_when_profile_client_does_not_match_executable() -> None:
         result = runner.invoke(app, ["run", "--no-ensure-daemon", sys.executable, "-c", "print('ok')"])
         assert result.exit_code == 0
         assert "WARN: profile client 'codex-cli' does not match executable" in result.stdout
-        assert "mcp-cli run codex" in result.stdout
+        assert "umcp run codex" in result.stdout
 
 
 def test_run_dry_run_does_not_require_daemon_start_message() -> None:
@@ -395,7 +397,7 @@ def test_run_rejects_missing_command_before_launch() -> None:
         result = runner.invoke(app, ["run", "--no-ensure-daemon", "missing-cmd-umcp"])
         assert result.exit_code != 0
         assert "Comando no encontrado: missing-cmd-umcp" in result.output
-        assert "mcp-cli run codex" in result.output
+        assert "umcp run codex" in result.output
 
 
 def test_run_rejects_non_directory_workspace() -> None:
@@ -420,7 +422,8 @@ def test_catalog_and_doctor_render() -> None:
         assert "Catalogo MCP" in catalog_result.stdout
         assert "filesystem" in catalog_result.stdout
         assert doctor_result.exit_code == 0
-        assert "Doctor (work)" in doctor_result.stdout
+        assert "MCP Checks (work)" in doctor_result.stdout
+        assert "Runtime Checks" in doctor_result.stdout
 
 
 def test_doctor_reports_client_and_daemon_probe(monkeypatch) -> None:

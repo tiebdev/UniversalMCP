@@ -48,18 +48,16 @@ def build_onboarding_intro(
     *,
     workspace: str,
     settings_path: str,
-    default_profile: str,
-    client_target: str,
+    configuration_state: str,
 ) -> Group:
     details = Text(
         "\n".join(
             [
                 "System: Universal Model Context Protocol (MCP) [0.1.0]",
                 "Mode: First-Run Onboarding",
+                f"Configuration: {configuration_state}",
                 f"Workspace: {workspace}",
                 f"Settings Path: {settings_path}",
-                f"Default Profile: {default_profile}",
-                f"Client Target: {client_target}",
             ]
         ),
         style="bold",
@@ -71,8 +69,8 @@ def build_onboarding_intro(
     )
 
 
-def build_preflight_table(checks: list[PreflightCheck]) -> Table:
-    table = Table()
+def build_preflight_table(checks: list[PreflightCheck], *, title: str | None = None) -> Table:
+    table = Table(title=title)
     table.add_column("State")
     table.add_column("Check")
     table.add_column("Detail")
@@ -90,22 +88,22 @@ def build_preflight_table(checks: list[PreflightCheck]) -> Table:
 def build_onboarding_summary_panel(
     *,
     profile_name: str,
+    client_target: str,
     enabled_mcps: list[str],
     configured_services: list[str],
     secret_refs: list[str],
-    secret_backend: str,
     pending_items: list[str],
 ) -> Table:
     table = Table()
     table.add_column("Field")
     table.add_column("Value")
     table.add_row("Active Profile", profile_name)
+    table.add_row("Client Target", client_target)
     table.add_row("Enabled MCPs", ", ".join(enabled_mcps) or "-")
     table.add_row("Configured Services", ", ".join(configured_services) or "-")
     table.add_row("Registered Secrets", ", ".join(secret_refs) or "-")
-    table.add_row("Secret Backend", secret_backend)
     table.add_row("Pending Items", ", ".join(pending_items) or "none")
-    table.add_row("Next Commands", "mcp-cli doctor | mcp-cli start | mcp-cli run codex")
+    table.add_row("Next Commands", "umcp doctor | umcp start | umcp run codex")
     return table
 
 
@@ -191,24 +189,28 @@ def build_doctor_table(settings: Settings, entries: list[CatalogEntry]) -> Table
     env_by_name = _env_by_name(profile, [entry.name for entry in enabled_entries])
     errors_by_name = _preflight_errors_by_name(profile, enabled_entries)
 
-    table = Table(title=f"Doctor ({profile_name})")
+    table = Table(title=f"MCP Checks ({profile_name})")
     table.add_column("MCP")
-    table.add_column("Command")
-    table.add_column("Env")
-    table.add_column("Checks")
+    table.add_column("Status")
+    table.add_column("Detail")
 
     for entry in enabled_entries:
         command_ok = shutil.which(entry.command) is not None
         env_keys = sorted(env_by_name.get(entry.name, {}).keys())
         errors = errors_by_name.get(entry.name, [])
-        checks = "ok" if command_ok and not errors else "; ".join(
-            ([f"missing command: {entry.command}"] if not command_ok else []) + errors
-        )
+        details = []
+        if not command_ok:
+            details.append(f"missing command: {entry.command}")
+        if env_keys:
+            details.append(f"env: {', '.join(env_keys)}")
+        details.extend(errors)
+        detail = "ok" if not details else "; ".join(details)
+        status = "ok" if command_ok and not errors else "warn"
+
         table.add_row(
             entry.name,
-            "ok" if command_ok else "missing",
-            ", ".join(env_keys) or "-",
-            checks,
+            status,
+            detail,
         )
 
     return table

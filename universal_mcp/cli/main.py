@@ -13,7 +13,6 @@ from universal_mcp.cli.onboarding import (
     build_pending_items,
     build_preflight_checks,
     configured_service_names,
-    onboarding_summary,
     registered_secret_refs,
     run_guided_onboarding,
 )
@@ -32,7 +31,7 @@ from universal_mcp.cli.views import (
 )
 from universal_mcp.config.catalog import catalog_names, load_default_catalog
 from universal_mcp.config.profiles import ProfileConfig, ServiceConfig, WorkspacePolicy
-from universal_mcp.config.secrets import delete_secret, list_secret_records, secret_backend_name, set_secret
+from universal_mcp.config.secrets import delete_secret, list_secret_records, set_secret
 from universal_mcp.config.settings import Settings, default_settings_path, ensure_settings, load_settings, save_settings
 from universal_mcp.cli.wrapper import (
     WrapperValidationError,
@@ -248,7 +247,7 @@ def catalog() -> None:
 def doctor() -> None:
     settings = ensure_settings(default_settings_path())
     console.print(build_doctor_table(settings, load_default_catalog()))
-    console.print(build_preflight_table(_build_runtime_checks(settings)))
+    console.print(build_preflight_table(_build_runtime_checks(settings), title="Runtime Checks"))
 
 
 @app.command("probe-daemon")
@@ -571,26 +570,22 @@ def use_profile(name: str) -> None:
 def onboarding(force: bool = typer.Option(False, help="Overwrite existing settings")) -> None:
     path = default_settings_path()
     intro_settings, created = bootstrap_settings(path, force=force)
-    profile = intro_settings.profiles[intro_settings.default_profile]
-    console.print(f"Initial configuration created at {path}" if created else f"Existing configuration reused from {path}")
     console.print(
         build_onboarding_intro(
             workspace=str(Path.cwd()),
             settings_path=str(path),
-            default_profile=intro_settings.default_profile,
-            client_target=profile.client,
+            configuration_state="created" if created else "reused",
         )
     )
-    console.print(build_preflight_table(build_preflight_checks(intro_settings, root=path.parent)))
+    console.print(build_preflight_table(build_preflight_checks(intro_settings, root=path.parent), title="Environment Checks"))
     settings, _ = run_guided_onboarding(path, force=force)
-    console.print(onboarding_summary(settings, path))
     console.print(
         build_onboarding_summary_panel(
             profile_name=settings.default_profile,
+            client_target=settings.profiles[settings.default_profile].client,
             enabled_mcps=settings.profiles[settings.default_profile].enabled_mcps,
             configured_services=configured_service_names(settings),
             secret_refs=registered_secret_refs(root=path.parent),
-            secret_backend=secret_backend_name(),
             pending_items=build_pending_items(settings, root=path.parent),
         )
     )

@@ -33,55 +33,61 @@ MCP validados en V1:
 
 ### Comandos principales
 
-- `mcp-cli onboarding`
-- `mcp-cli doctor`
-- `mcp-cli probe-daemon`
-- `mcp-cli start`
-- `mcp-cli stop`
-- `mcp-cli restart`
-- `mcp-cli status`
-- `mcp-cli run codex`
-- `mcp-cli run --dry-run codex`
-- `mcp-cli catalog`
-- `mcp-cli logs`
-- `mcp-cli config`
-- `mcp-cli set-port <port>`
+El comando principal visible es `umcp`.
+
+Alias compatible disponible:
+
+- `mcp-cli`
+
+- `umcp onboarding`
+- `umcp doctor`
+- `umcp probe-daemon`
+- `umcp start`
+- `umcp stop`
+- `umcp restart`
+- `umcp status`
+- `umcp run codex`
+- `umcp run --dry-run codex`
+- `umcp catalog`
+- `umcp logs`
+- `umcp config`
+- `umcp set-port <port>`
 
 Secretos:
 
-- `mcp-cli secret list`
-- `mcp-cli secret set <ref> [value]`
-- `mcp-cli secret rotate <ref> [value]`
-- `mcp-cli secret delete <ref>`
+- `umcp secret list`
+- `umcp secret set <ref> [value]`
+- `umcp secret rotate <ref> [value]`
+- `umcp secret delete <ref>`
 
 Perfiles:
 
-- `mcp-cli profile list`
-- `mcp-cli profile create <name> [--mcp ...]`
-- `mcp-cli profile clone <source> <target>`
-- `mcp-cli profile delete <name>`
-- `mcp-cli profile show`
-- `mcp-cli profile set-client <name> <client>`
-- `mcp-cli profile set-mcps <name> <mcp...>`
-- `mcp-cli profile set-workspace-policy <name> <explicit|fixed> [--path ...]`
-- `mcp-cli profile use <name>`
-- `mcp-cli profile service show`
-- `mcp-cli profile service set <profile> <service> [options]`
-- `mcp-cli profile service remove <profile> <service>`
+- `umcp profile list`
+- `umcp profile create <name> [--mcp ...]`
+- `umcp profile clone <source> <target>`
+- `umcp profile delete <name>`
+- `umcp profile show`
+- `umcp profile set-client <name> <client>`
+- `umcp profile set-mcps <name> <mcp...>`
+- `umcp profile set-workspace-policy <name> <explicit|fixed> [--path ...]`
+- `umcp profile use <name>`
+- `umcp profile service show`
+- `umcp profile service set <profile> <service> [options]`
+- `umcp profile service remove <profile> <service>`
 
 ### Flujo recomendado
 
 Sesión normal:
 
-1. `mcp-cli doctor`
-2. `mcp-cli start`
-3. `mcp-cli run codex`
+1. `umcp doctor`
+2. `umcp start`
+3. `umcp run codex`
 
 Validación sin lanzar el cliente:
 
-1. `mcp-cli doctor`
-2. `mcp-cli probe-daemon`
-3. `mcp-cli run --dry-run codex`
+1. `umcp doctor`
+2. `umcp probe-daemon`
+3. `umcp run --dry-run codex`
 
 ### Validación runtime
 
@@ -91,13 +97,13 @@ El proyecto incluye un script reproducible de validación end-to-end:
 
 Secuencia:
 
-- `mcp-cli doctor`
-- `mcp-cli probe-daemon`
-- `mcp-cli start`
-- `mcp-cli status`
-- `mcp-cli run --dry-run codex -- --version`
-- `mcp-cli run codex -- --version`
-- `mcp-cli stop`
+- `umcp doctor`
+- `umcp probe-daemon`
+- `umcp start`
+- `umcp status`
+- `umcp run --dry-run codex -- --version`
+- `umcp run codex -- --version`
+- `umcp stop`
 
 Logs por ejecución:
 
@@ -107,8 +113,8 @@ Logs por ejecución:
 
 La V1 está centrada en `Codex CLI`:
 
-- `mcp-cli run codex` es la ruta principal
-- `mcp-cli run --dry-run codex` valida contexto sin lanzar el cliente
+- `umcp run codex` es la ruta principal
+- `umcp run --dry-run codex` valida contexto sin lanzar el cliente
 - la CLI muestra `Run Context` antes de ejecutar
 - si falta `codex`, el error indica instalarlo o añadirlo al `PATH`
 
@@ -126,7 +132,7 @@ Además:
 
 ### Onboarding, secretos y workspace
 
-`mcp-cli onboarding` ya ofrece:
+`umcp onboarding` ya ofrece:
 
 - checks reales del entorno
 - selección interactiva de MCP
@@ -140,7 +146,7 @@ Además:
   - si no, usa el directorio actual para esa ejecución
 - `fixed`
   - persiste una ruta en el perfil
-  - `mcp-cli run ...` usa esa ruta por defecto
+  - `umcp run ...` usa esa ruta por defecto
   - si la ruta no existe, la ejecución falla con error claro
 
 ### Licencia
@@ -182,55 +188,61 @@ Validated MCPs in V1:
 
 ### Main commands
 
-- `mcp-cli onboarding`
-- `mcp-cli doctor`
-- `mcp-cli probe-daemon`
-- `mcp-cli start`
-- `mcp-cli stop`
-- `mcp-cli restart`
-- `mcp-cli status`
-- `mcp-cli run codex`
-- `mcp-cli run --dry-run codex`
-- `mcp-cli catalog`
-- `mcp-cli logs`
-- `mcp-cli config`
-- `mcp-cli set-port <port>`
+The primary visible command is `umcp`.
+
+Compatible alias still available:
+
+- `mcp-cli`
+
+- `umcp onboarding`
+- `umcp doctor`
+- `umcp probe-daemon`
+- `umcp start`
+- `umcp stop`
+- `umcp restart`
+- `umcp status`
+- `umcp run codex`
+- `umcp run --dry-run codex`
+- `umcp catalog`
+- `umcp logs`
+- `umcp config`
+- `umcp set-port <port>`
 
 Secrets:
 
-- `mcp-cli secret list`
-- `mcp-cli secret set <ref> [value]`
-- `mcp-cli secret rotate <ref> [value]`
-- `mcp-cli secret delete <ref>`
+- `umcp secret list`
+- `umcp secret set <ref> [value]`
+- `umcp secret rotate <ref> [value]`
+- `umcp secret delete <ref>`
 
 Profiles:
 
-- `mcp-cli profile list`
-- `mcp-cli profile create <name> [--mcp ...]`
-- `mcp-cli profile clone <source> <target>`
-- `mcp-cli profile delete <name>`
-- `mcp-cli profile show`
-- `mcp-cli profile set-client <name> <client>`
-- `mcp-cli profile set-mcps <name> <mcp...>`
-- `mcp-cli profile set-workspace-policy <name> <explicit|fixed> [--path ...]`
-- `mcp-cli profile use <name>`
-- `mcp-cli profile service show`
-- `mcp-cli profile service set <profile> <service> [options]`
-- `mcp-cli profile service remove <profile> <service>`
+- `umcp profile list`
+- `umcp profile create <name> [--mcp ...]`
+- `umcp profile clone <source> <target>`
+- `umcp profile delete <name>`
+- `umcp profile show`
+- `umcp profile set-client <name> <client>`
+- `umcp profile set-mcps <name> <mcp...>`
+- `umcp profile set-workspace-policy <name> <explicit|fixed> [--path ...]`
+- `umcp profile use <name>`
+- `umcp profile service show`
+- `umcp profile service set <profile> <service> [options]`
+- `umcp profile service remove <profile> <service>`
 
 ### Recommended flow
 
 Normal session:
 
-1. `mcp-cli doctor`
-2. `mcp-cli start`
-3. `mcp-cli run codex`
+1. `umcp doctor`
+2. `umcp start`
+3. `umcp run codex`
 
 Validation without launching the client:
 
-1. `mcp-cli doctor`
-2. `mcp-cli probe-daemon`
-3. `mcp-cli run --dry-run codex`
+1. `umcp doctor`
+2. `umcp probe-daemon`
+3. `umcp run --dry-run codex`
 
 ### Runtime validation
 
@@ -240,13 +252,13 @@ The project includes a reproducible end-to-end validation script:
 
 Sequence:
 
-- `mcp-cli doctor`
-- `mcp-cli probe-daemon`
-- `mcp-cli start`
-- `mcp-cli status`
-- `mcp-cli run --dry-run codex -- --version`
-- `mcp-cli run codex -- --version`
-- `mcp-cli stop`
+- `umcp doctor`
+- `umcp probe-daemon`
+- `umcp start`
+- `umcp status`
+- `umcp run --dry-run codex -- --version`
+- `umcp run codex -- --version`
+- `umcp stop`
 
 Per-run logs:
 
@@ -256,8 +268,8 @@ Per-run logs:
 
 V1 is centered on `Codex CLI`:
 
-- `mcp-cli run codex` is the main path
-- `mcp-cli run --dry-run codex` validates context without launching the client
+- `umcp run codex` is the main path
+- `umcp run --dry-run codex` validates context without launching the client
 - the CLI renders `Run Context` before execution
 - if `codex` is missing, the error tells the user to install it or add it to `PATH`
 
@@ -275,7 +287,7 @@ Also:
 
 ### Onboarding, secrets, and workspace
 
-`mcp-cli onboarding` already provides:
+`umcp onboarding` already provides:
 
 - real environment checks
 - interactive MCP selection
@@ -289,7 +301,7 @@ Also:
   - otherwise uses the current directory for that execution
 - `fixed`
   - persists a path in the profile
-  - `mcp-cli run ...` uses that path by default
+  - `umcp run ...` uses that path by default
   - execution fails with a clear error if the path does not exist
 
 ### License
