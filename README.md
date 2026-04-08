@@ -2,7 +2,7 @@
 
 Universal MCP is a tool for unifying the startup, validation, and day-to-day use of MCP-based clients and tools from a single CLI.
 
-V1 is focused on `Codex CLI` as the main path, with operational support for:
+v0.1.0 is focused on `Codex CLI` as the main path, with operational support for:
 
 - local daemon
 - profiles
@@ -14,7 +14,7 @@ V1 is focused on `Codex CLI` as the main path, with operational support for:
 
 ### Current status
 
-V1 is operational and validated for its main `Codex CLI` flow.
+v0.1.0 is operational and validated for its main `Codex CLI` flow.
 
 Validated MCPs in V1:
 
@@ -105,7 +105,7 @@ Per-run logs:
 
 ### Wrapper and daemon
 
-V1 is centered on `Codex CLI`:
+v0.1.0 is centered on `Codex CLI`:
 
 - `umcp run codex` is the main path
 - `umcp run --dry-run codex` validates context without launching the client
