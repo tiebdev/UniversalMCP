@@ -1,4 +1,4 @@
-# Universal MCP Orchestrator
+# Universal MCP
 
 Base operativa de la V1 del orquestador Universal MCP.
 
@@ -30,14 +30,6 @@ MCP validados en V1:
 - `postgres`
 - `ast-grep`
 - `sequential-thinking`
-
-Resumen técnico de cierre:
-
-- ver [ESTADO_FINAL_V1.md](/mnt/c/Users/RidO/Documents/GitHub/UniversalMCP/ESTADO_FINAL_V1.md)
-
-Trabajo posterior no bloqueante:
-
-- ver [POST_V1.md](/mnt/c/Users/RidO/Documents/GitHub/UniversalMCP/POST_V1.md)
 
 ### Comandos principales
 
@@ -153,9 +145,9 @@ Además:
 
 ### Licencia
 
-Este proyecto está publicado bajo [PolyForm Noncommercial 1.0.0](/mnt/c/Users/RidO/Documents/GitHub/UniversalMCP/LICENSE.md).
+Este proyecto está publicado bajo [PolyForm Noncommercial 1.0.0](./LICENSE.md)
 
-Antes de usar, redistribuir o modificar el proyecto, revisa [LICENSE.md](/mnt/c/Users/RidO/Documents/GitHub/UniversalMCP/LICENSE.md).
+Antes de usar, redistribuir o modificar el proyecto, revisa [LICENSE.md](./LICENSE.md).
 
 ---
 
@@ -187,14 +179,6 @@ Validated MCPs in V1:
 - `postgres`
 - `ast-grep`
 - `sequential-thinking`
-
-Technical closeout summary:
-
-- see [ESTADO_FINAL_V1.md](/mnt/c/Users/RidO/Documents/GitHub/UniversalMCP/ESTADO_FINAL_V1.md)
-
-Non-blocking follow-up work:
-
-- see [POST_V1.md](/mnt/c/Users/RidO/Documents/GitHub/UniversalMCP/POST_V1.md)
 
 ### Main commands
 
@@ -310,6 +294,6 @@ Also:
 
 ### License
 
-This project is released under [PolyForm Noncommercial 1.0.0](/mnt/c/Users/RidO/Documents/GitHub/UniversalMCP/LICENSE.md).
+This project is released under [PolyForm Noncommercial 1.0.0](./LICENSE.md)
 
-Before using, redistributing, or modifying the project, review [LICENSE.md](/mnt/c/Users/RidO/Documents/GitHub/UniversalMCP/LICENSE.md).
+Before using, redistributing, or modifying the project, review [LICENSE.md](./LICENSE.md).
